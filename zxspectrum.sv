@@ -81,6 +81,7 @@ localparam CONF_STR = {
 	"S1U,TRDIMGDSKMGT,Load Disk;",
 	"F,TAPCSWTZX,Load Tape;",
 	"F,Z80SNA,Load Snapshot;",
+	"OMO,CPU frequency,3.5 MHz,7 MHz,14 MHz,28 MHz,56 MHz;",
 	"O89,Video timings,ULA-48,ULA-128,Pentagon;",
 	"OAC,Memory,Standard 128K,Pentagon 1024K,Profi 1024K,Standard 48K,+2A/+3;",
 	"O12,Joystick 1,Sinclair I,Sinclair II,Kempston,Cursor;",
@@ -96,6 +97,7 @@ localparam CONF_STR = {
 	"V,v3.40.",`BUILD_DATE
 };
 
+wire [2:0] st_cpu_freq    = status[24:22];
 wire [1:0] st_ula_type    = status[9:8];
 wire [2:0] st_memory_mode = status[12:10];
 wire       st_fast_tape   = status[6];
@@ -153,24 +155,33 @@ always @(posedge clk_sys) begin
 	ce_cpu_tn <= !((counter & turbo) ^ turbo ^ turbo[4:1]);
 end
 
-reg [4:0] turbo = 5'b11111, turbo_key = 5'b11111;
+reg [4:0] turbo = 5'b11111, turbo_conf = 5'b11111, turbo_key = 5'b11111;
+reg turbo_key_active;
 always @(posedge clk_sys) begin
-	reg [9:4] old_Fn;
-	old_Fn <= Fn[9:4];
+	reg old_Fn9;
+	old_Fn9 <= Fn[9];
 
 	if(reset) pause <= 0;
+	else if(!mod && ~old_Fn9 & Fn[9]) pause <= ~pause;
 
-	if(!mod) begin
-		if(~old_Fn[4] & Fn[4]) turbo_key <= 5'b11111; //3.5 MHz
-		if(~old_Fn[5] & Fn[5]) turbo_key <= 5'b01111; //  7 Mhz
-		if(~old_Fn[6] & Fn[6]) turbo_key <= 5'b00111; // 14 MHz
-		if(~old_Fn[7] & Fn[7]) turbo_key <= 5'b00011; // 28 MHz
-		if(~old_Fn[8] & Fn[8]) turbo_key <= 5'b00001; // 56 MHz
-		if(~old_Fn[9] & Fn[9]) pause <= ~pause;
-	end
+	turbo_key_active <= (|Fn[8:4]) && !mod;
+	if(Fn[4]) turbo_key <= 5'b11111; //3.5 MHz
+	if(Fn[5]) turbo_key <= 5'b01111; //  7 Mhz
+	if(Fn[6]) turbo_key <= 5'b00111; // 14 MHz
+	if(Fn[7]) turbo_key <= 5'b00011; // 28 MHz
+	if(Fn[8]) turbo_key <= 5'b00001; // 56 MHz
+
+	case(st_cpu_freq)
+		3'd0:    turbo_conf <= 5'b11111; //3.5 MHz
+		3'd1:    turbo_conf <= 5'b01111; //  7 Mhz
+		3'd2:    turbo_conf <= 5'b00111; // 14 MHz
+		3'd3:    turbo_conf <= 5'b00011; // 28 MHz
+		3'd4:    turbo_conf <= 5'b00001; // 56 MHz
+		default: turbo_conf <= 5'b11111; //3.5 MHz
+	endcase
 end
 
-wire [4:0] turbo_req = (tape_active & ~st_fast_tape) ? 5'b00001 : turbo_key;
+wire [4:0] turbo_req = (tape_active & ~st_fast_tape) ? 5'b00001 : turbo_key_active? turbo_key : turbo_conf;
 always @(posedge clk_sys) begin
 	reg [1:0] timeout;
 
