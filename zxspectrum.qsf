@@ -41,7 +41,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 13.1
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "21:40:24  MAY 17, 2014"
-set_global_assignment -name LAST_QUARTUS_VERSION "13.1 SP4.26"
+set_global_assignment -name LAST_QUARTUS_VERSION 13.1
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name NUM_PARALLEL_PROCESSORS ALL
 set_global_assignment -name SMART_RECOMPILE ON
@@ -287,7 +287,7 @@ set_global_assignment -name OPTIMIZE_IOC_REGISTER_PLACEMENT_FOR_TIMING "PACK ALL
 
 
 set_global_assignment -name SEED 0
-set_global_assignment -name USE_SIGNALTAP_FILE output_files/snap.stp
+set_global_assignment -name USE_SIGNALTAP_FILE output_files/sp0256.stp
 set_global_assignment -name QIP_FILE sys/sys.qip
 set_global_assignment -name QIP_FILE T80/T80.qip
 set_global_assignment -name SYSTEMVERILOG_FILE sdram.sv
@@ -306,9 +306,12 @@ set_global_assignment -name SYSTEMVERILOG_FILE snap_loader.sv
 set_global_assignment -name SYSTEMVERILOG_FILE ula.sv
 set_global_assignment -name VHDL_FILE tzxplayer.vhd
 set_global_assignment -name VERILOG_FILE gs.v
+set_global_assignment -name VHDL_FILE sp0256_al2_decoded.vhd
+set_global_assignment -name VHDL_FILE sp0256.vhd
 set_global_assignment -name SIGNALTAP_FILE output_files/tzx.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/sdram.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/gs.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/cpu.stp
 set_global_assignment -name SIGNALTAP_FILE output_files/snap.stp
+set_global_assignment -name SIGNALTAP_FILE output_files/sp0256.stp
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

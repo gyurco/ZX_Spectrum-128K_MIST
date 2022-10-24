@@ -110,6 +110,13 @@ set_multicycle_path -to {u765:u765|status[*]} -hold 1
 set_multicycle_path -to {u765:u765|i_rpm_time[*][*][*]} -setup 8
 set_multicycle_path -to {u765:u765|i_rpm_time[*][*][*]} -hold 7
 
+set_multicycle_path -from {sp0256:sp0256|sp0256_al2_decoded:sp0256_al2_decoded|*} -setup 4
+set_multicycle_path -from {sp0256:sp0256|sp0256_al2_decoded:sp0256_al2_decoded|*} -hold 3
+set_multicycle_path -from {sp0256:sp0256|filter[*]} -setup 4
+set_multicycle_path -from {sp0256:sp0256|filter[*]} -hold 3
+set_multicycle_path -to {sp0256:sp0256|audio[*]} -setup 4
+set_multicycle_path -to {sp0256:sp0256|audio[*]} -hold 3
+
 # False paths
 
 set_false_path -to {video_mixer:video_mixer|scandoubler:scandoubler|Hq2x:Hq2x|*}

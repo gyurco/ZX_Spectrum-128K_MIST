@@ -64,7 +64,7 @@ assign LED = ~(ioctl_download | tape_led);
 localparam CONF_BDI   = "(BDI)";
 localparam CONF_PLUSD = "(+D) ";
 
-localparam ROM_ADDR  = 25'h150000; // boot rom
+localparam ROM_ADDR  = 25'h200000; // boot rom
 localparam TAPE_ADDR = 25'h400000; // tape buffer at 4MB
 localparam SNAP_ADDR = 25'h600000; // snapshot buffer at 6MB
 
@@ -90,6 +90,7 @@ localparam CONF_STR = {
 	"ODE,Features,ULA+ & Timex,ULA+,Timex,None;",
 	"OHI,MMC Card,Off,divMMC,ZXMMC,divMMC+ESXDOS;",
 	"OKL,General Sound,512KB,1MB,2MB,Disabled;",
+	"OJ,Currah uSpeech,Off,On;",
 	"O5,Keyboard,Issue 3,Issue 2;",
 	"O7,Snowing,Enabled,Unrained;",
 	"T0,Reset;",
@@ -104,8 +105,9 @@ wire [1:0] st_joy2        = status[4:3];
 wire [1:0] st_scanlines   = status[16:15];
 wire [1:0] st_mmc         = status[18:17];
 wire [1:0] st_gs_memory   = status[21:20];
-wire       issue2         = status[5];
-wire       unrainer       = status[7];
+wire       st_issue2      = status[5];
+wire       st_unrainer    = status[7];
+wire       st_uspeech     = status[19];
 
 ////////////////////   CLOCKS   ///////////////////
 wire clk_sys;
@@ -314,18 +316,19 @@ T80pa cpu
 );
 
 always_comb begin
-	casex({nMREQ, tape_dout_en, ~nM1 | nIORQ | nRD, fdd_sel | fdd_sel2 | plus3_fdd, mf3_port, mmc_sel, addr[5:0]==6'h1F, portBF, gs_sel, psg_enable, ulap_sel, addr[0]})
-		'b01XXXXXXXXXX: cpu_din = tape_dout;
-		'b00XXXXXXXXXX: cpu_din = ram_dout;
-		'b1X01XXXXXXXX: cpu_din = fdd_dout;
-		'b1X001XXXXXXX: cpu_din = (addr[14:13] == 2'b11 ? page_reg : page_reg_plus3);
-		'b1X0001XXXXXX: cpu_din = mmc_dout;
-		'b1X00001XXXXX: cpu_din = mouse_sel ? mouse_data : {2'b00, joy_kempston};
-		'b1X000001XXXX: cpu_din = {page_scr_copy, 7'b1111111};
-		'b1X0000001XXX: cpu_din = gs_dout;
-		'b1X00000001XX: cpu_din = (addr[14] ? sound_data : 8'hFF);
-		'b1X000000001X: cpu_din = ulap_dout;
-		'b1X0000000000: cpu_din = {1'b1, ula_tape_in, 1'b1, key_data[4:0] & joy_kbd};
+	casex({sp0256_sel, nMREQ, tape_dout_en, ~nM1 | nIORQ | nRD, fdd_sel | fdd_sel2 | plus3_fdd, mf3_port, mmc_sel, addr[5:0]==6'h1F, portBF, gs_sel, psg_enable, ulap_sel, addr[0]})
+		'b1XXXXXXXXXXXX: cpu_din = {7'b1111111, ~sp0256_rdy};
+		'b001XXXXXXXXXX: cpu_din = tape_dout;
+		'b000XXXXXXXXXX: cpu_din = ram_dout;
+		'b01X01XXXXXXXX: cpu_din = fdd_dout;
+		'b01X001XXXXXXX: cpu_din = (addr[14:13] == 2'b11 ? page_reg : page_reg_plus3);
+		'b01X0001XXXXXX: cpu_din = mmc_dout;
+		'b01X00001XXXXX: cpu_din = mouse_sel ? mouse_data : {2'b00, joy_kempston};
+		'b01X000001XXXX: cpu_din = {page_scr_copy, 7'b1111111};
+		'b01X0000001XXX: cpu_din = gs_dout;
+		'b01X00000001XX: cpu_din = (addr[14] ? sound_data : 8'hFF);
+		'b01X000000001X: cpu_din = ulap_dout;
+		'b01X0000000000: cpu_din = {1'b1, ula_tape_in, 1'b1, key_data[4:0] & joy_kbd};
 		default: cpu_din = port_ff;
 	endcase
 end
@@ -389,15 +392,15 @@ wire        ram_ready;
 always_comb begin
 	casex({snap_dl | snap_reset, mmc_ram_en, page_special, addr[15:14]})
 		'b1_X_X_XX: ram_addr = snap_rd ? (SNAP_ADDR + snap_dl_addr) : snap_addr;
-		'b0_1_0_00: ram_addr = { 4'b1000, mmc_ram_bank, addr[12:0] };
-		'b0_0_0_00: ram_addr = { 3'b101, page_rom, addr[13:0] }; //ROM
-		'b0_X_0_01: ram_addr = {   4'd0, 3'd5,     addr[13:0] }; //Non-special page modes
-		'b0_X_0_10: ram_addr = {   4'd0, 3'd2,     addr[13:0] };
-		'b0_X_0_11: ram_addr = {   1'b0, page_ram, addr[13:0] };
-		'b0_X_1_00: ram_addr = {   4'd0,                       |page_reg_plus3[2:1], 2'b00, addr[13:0] }; //Special page modes
-		'b0_X_1_01: ram_addr = {   4'd0, |page_reg_plus3[2:1], &page_reg_plus3[2:1],  1'b1, addr[13:0] };
-		'b0_X_1_10: ram_addr = {   4'd0,                       |page_reg_plus3[2:1], 2'b10, addr[13:0] };
-		'b0_X_1_11: ram_addr = {   4'd0,     ~page_reg_plus3[2] & page_reg_plus3[1], 2'b11, addr[13:0] };
+		'b0_1_0_00: ram_addr = { 5'b01000, mmc_ram_bank, addr[12:0] };
+		'b0_0_0_00: ram_addr = { 4'b1000, page_rom, addr[13:0] }; //ROM
+		'b0_X_0_01: ram_addr = {   5'd0, 3'd5,     addr[13:0] }; //Non-special page modes
+		'b0_X_0_10: ram_addr = {   5'd0, 3'd2,     addr[13:0] };
+		'b0_X_0_11: ram_addr = {   2'd0, page_ram, addr[13:0] };
+		'b0_X_1_00: ram_addr = {   5'd0,                       |page_reg_plus3[2:1], 2'b00, addr[13:0] }; //Special page modes
+		'b0_X_1_01: ram_addr = {   5'd0, |page_reg_plus3[2:1], &page_reg_plus3[2:1],  1'b1, addr[13:0] };
+		'b0_X_1_10: ram_addr = {   5'd0,                       |page_reg_plus3[2:1], 2'b10, addr[13:0] };
+		'b0_X_1_11: ram_addr = {   5'd0,     ~page_reg_plus3[2] & page_reg_plus3[1], 2'b11, addr[13:0] };
 	endcase
 
 	casex({snap_dl | snap_reset, dma, tape_req})
@@ -594,16 +597,13 @@ always @(posedge clk_sys) begin
 	if(snap_hwset) {memory_mode, ula_type} <= snap_hw;
 end
 
-always_comb begin
-	casex({mmc_rom_en, trdos_en, plusd_mem, mf128_mem, plus3})
-		'b1XXXX: page_rom <= 4'b0100; //esxdos
-		'b01XXX: page_rom <= 4'b0101; //trdos
-		'b001XX: page_rom <= 4'b1100; //plusd
-		'b0001X: page_rom <= { 2'b11, plus3, ~plus3 }; //MF128/+3
-		'b00001: page_rom <= { 2'b10, page_reg_plus3[2], page_reg[4] }; //+3
-		'b00000: page_rom <= { zx48, 2'b11, zx48 | page_reg[4] }; //up to +2
-	endcase
-end
+assign page_rom = mmc_rom_en ? 4'b0000 : //esxdos
+                    trdos_en ? 4'b0001 : //trdos
+                   plusd_mem ? 4'b1000 : //plusd
+                   mf128_mem ? { 2'b10, plus3, ~plus3 } : //MF128/+3
+                       plus3 ? { 2'b01, page_reg_plus3[2], page_reg[4] } : //+3
+                  uspeech_en ? 4'b1110 : // Currah uSpeech
+                               { zx48, 2'b01, zx48 | page_reg[4] }; //up to +2
 
 reg  auto_reset_r;
 
@@ -773,12 +773,64 @@ always @(posedge clk_sys) begin
     end
 end
 
+// Currah uSpeech
+reg         uspeech_en;
+reg   [8:0] uspeech_clk_cnt;
+reg         uspeech_clk_en; // 250 kHz
+reg         uspeech_hifreq; // intonation flag, ~7% more clock frequency to SP0256
+wire        sp0256_sel = uspeech_en && addr[15:12] == 4'h1;
+wire        sp0256_rdy;
+wire  [9:0] sp0256_out;
+
+always @(posedge clk_sys) begin
+
+	reg old_nRD, old_nWR;
+	old_nRD <= nRD;
+	old_nWR <= nWR;
+
+	if(reset) begin
+		uspeech_en <= 0;
+		uspeech_clk_en <= 0;
+		uspeech_clk_cnt <= 0;
+		uspeech_hifreq <= 0;
+	end else begin
+		if(((old_nRD & ~nRD) | (old_nWR & ~nWR)) && addr == 16'h0038 && st_uspeech) begin
+			//page in/out for port IN
+			uspeech_en <= !uspeech_en;
+		end
+
+		if (uspeech_en && ~nWR && addr[15:12] == 4'h3)
+			uspeech_hifreq <= addr[0];
+
+		uspeech_clk_en <= 0;
+		uspeech_clk_cnt <= uspeech_clk_cnt + 1'd1;
+		if (uspeech_clk_cnt == 447 || (uspeech_hifreq && uspeech_clk_cnt == 415)) begin
+			uspeech_clk_en <= 1;
+			uspeech_clk_cnt <= 0;
+		end
+	end
+end
+
+sp0256 sp0256 (
+	.clock(clk_sys),
+	.clock_250k_en(uspeech_clk_en),
+	.reset(reset),
+
+	.input_rdy(sp0256_rdy),
+	.allophone(cpu_dout[5:0]),
+	.trig_allophone(sp0256_sel & ~nWR),
+
+	.audio_out(sp0256_out)
+);
+
 // Final audio signal mixing
+wire [15:0] audio_mix_l = {~gs_l[14], gs_l[13:0]} + {1'd0, psg_left,  3'd0} + {2'd0, sd_l0, 4'd0} + {2'd0, sd_l1, 4'd0} + {3'd0, ear_out, mic_out, tape_in, 9'd0} + {sp0256_out, 4'd0};
+wire [15:0] audio_mix_r = {~gs_r[14], gs_r[13:0]} + {1'd0, psg_right, 3'd0} + {2'd0, sd_r0, 4'd0} + {2'd0, sd_r1, 4'd0} + {3'd0, ear_out, mic_out, tape_in, 9'd0} + {sp0256_out, 4'd0};
 sigma_delta_dac #(14) dac_l
 (
 	.CLK(clk_sys),
 	.RESET(reset),
-	.DACin({~gs_l[14], gs_l[13:0]} + {1'd0, psg_left, 3'd0} + {2'd0, sd_l0, 4'd0} + {2'd0, sd_l1, 4'd0} + {2'd0, ear_out, mic_out, tape_in, 10'd0}),
+	.DACin(audio_mix_l[15] ? 15'h7FFF : audio_mix_l[14:0]),
 	.DACout(AUDIO_L)
 );
 
@@ -786,7 +838,7 @@ sigma_delta_dac #(14) dac_r
 (
 	.CLK(clk_sys),
 	.RESET(reset),
-	.DACin({~gs_r[14], gs_r[13:0]} + {1'd0, psg_right, 3'd0} + {2'd0, sd_r0, 4'd0} + {2'd0, sd_r1, 4'd0} + {2'd0, ear_out, mic_out, tape_in, 10'd0}),
+	.DACin(audio_mix_r[15] ? 15'h7FFF : audio_mix_l[14:0]),
 	.DACout(AUDIO_R)
 );
 
@@ -816,7 +868,7 @@ wire       HSync, VSync, HBlank;
 wire       ulap_ena, ulap_mono, mode512;
 wire       ulap_avail = ~status[14] & ~trdos_en;
 wire       tmx_avail = ~status[13] & ~trdos_en;
-wire       snow_ena = &turbo & ~plus3 & ~unrainer;
+wire       snow_ena = &turbo & ~plus3 & ~st_unrainer;
 wire       ula_nWR;
 
 ULA ULA(.*, .nPortRD(), .nPortWR(ula_nWR), .din(cpu_dout), .page_ram(page_ram[2:0]));
@@ -1152,7 +1204,7 @@ end
 
 assign UART_TX = 1;
 assign tape_in = ~(tape_loaded_reg ? tape_vin : UART_RX);
-assign ula_tape_in = tape_in | ear_out | (issue2 & !tape_active & mic_out);
+assign ula_tape_in = tape_in | ear_out | (st_issue2 & !tape_active & mic_out);
 
 //////////////////  SNAPSHOT  //////////////////
 reg          snap_dl = 0;
