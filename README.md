@@ -110,7 +110,7 @@ ESXDOS is enabled, since the built-in Beta Disk Interface and PlusD interface al
 
 ### ROM Format:
 You can create your own **spectrum.rom**, for example to replace +3 ROMs with +3e.
-The format is: ESXMMC.BIN(2x) + TRDOS + 128 ROM0 + 128 ROM1 + +3 ROM0/1/2/3 + PlusD + MF128 + MF3 + 48K ROM + Currah uSpeech(2x) + GS(low) + GS(high).
+The format is: ESXMMC.BIN(2x) + TRDOS + 128 ROM0 + 128 ROM1 + +3 ROM0/1/2/3 + PlusD + MF128 + MF3 + 48K ROM + GS(low) + GS(high) + Currah uSpeech(2x).
 Each part is 16k, except uSpeech, which is 4k.
 
 ### Special Keys:
