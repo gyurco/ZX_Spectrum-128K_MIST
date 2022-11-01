@@ -99,8 +99,16 @@ localparam STATE_LAST      = 3'd7;
 reg [2:0] t;
 
 always @(posedge clk) begin
-	t <= t + 1'd1;
-	if (t == STATE_LAST) t <= STATE_RAS0;
+	case (t)
+	0: t <= 3'd1;
+	1: t <= 3'd2;
+	2: t <= 3'd3;
+	3: t <= 3'd4;
+	4: t <= 3'd5;
+	5: t <= 3'd6;
+	6: t <= 3'd7;
+	default: t <= 3'd0;
+	endcase
 	//if (t == STATE_RAS1 && !oe_latch[0] && !we_latch[0] && !need_refresh && next_port[1] == PORT_NONE) t <= STATE_RAS0;
 	if (clkref) t <= 3'd6;
 end
