@@ -134,7 +134,6 @@ reg  ce_cpu_tn;
 wire ce_cpu_p = cpu_en & cpu_p;
 wire ce_cpu_n = cpu_en & cpu_n;
 wire ce_cpu   = cpu_en & ce_cpu_tp;
-wire ce_wd1793 = ce_cpu;
 wire ce_u765 = ce_cpu;
 wire ce_tape = ce_cpu;
 
@@ -153,6 +152,17 @@ always @(posedge clk_sys) begin
 
 	ce_cpu_tp <= !(counter & turbo);
 	ce_cpu_tn <= !((counter & turbo) ^ turbo ^ turbo[4:1]);
+end
+
+reg  ce_8m;
+always @(posedge clk_sys) begin
+	reg [5:0] counter = 0;
+	counter <= counter + 1'd1;
+	ce_8m <= 0;
+	if (counter == 13) begin
+		ce_8m <= 1;
+		counter <= 0;
+	end
 end
 
 reg [4:0] turbo = 5'b11111, turbo_key = 5'b11111;
@@ -574,7 +584,7 @@ wire       page_p1024 = addr[15] & addr[14] & addr[13] & ~addr[12] & ~addr[3]; /
 reg  [2:0] page_128k;
 
 reg  [3:0] page_rom;
-wire       active_48_rom = zx48 | (page_reg[4] & ~plus3) | (plus3 & page_reg[4] & page_reg_plus3[2] & ~page_special);
+wire       active_48_rom = ~(mmc_rom_en | trdos_en | plusd_mem | uspeech_en) & (zx48 | (page_reg[4] & ~plus3) | (plus3 & page_reg[4] & page_reg_plus3[2] & ~page_special));
 
 reg  [1:0] ula_type;
 reg  [2:0] memory_mode;
@@ -1047,8 +1057,6 @@ wire        portBF = mf128_port & addr[7] & (mf128_mem | plusd_mem);
 always @(posedge clk_sys) begin
 	reg old_mounted;
 
-	if(reset)      {plusd_mem, trdos_en} <= 0;
-
 	old_mounted <= img_mounted[1];
 	if(~old_mounted & img_mounted[1])	begin
 		plus3_fdd_ready <= ioctl_ext_index == 2 & |img_size;
@@ -1057,8 +1065,8 @@ always @(posedge clk_sys) begin
 	end
 
 	psg_reset <= 0;
-
-	if(plusd_en) begin
+	if(reset) {plusd_mem, trdos_en} <= 0;
+	else if(plusd_en) begin
 		trdos_en <= 0;
 		if(~old_wr & io_wr  & (addr[7:0] == 'hEF) & plusd_ena) {fdd_side, fdd_drive1} <= {cpu_dout[7], cpu_dout[1:0] != 2};
 		if(~old_wr & io_wr  & (addr[7:0] == 'hE7)) plusd_mem <= 0;
@@ -1075,43 +1083,40 @@ always @(posedge clk_sys) begin
 	end
 end
 
-wd1793 #(1,0) fdd
+fdc1772 #(.FD_NUM(1), .INVERT_HEAD_RA(1), .MODEL(3)) fdc1772
 (
-	.clk_sys(clk_sys),
-	.ce(ce_wd1793),
-	.reset((fdd_reset & ~plusd_en) | reset),
-	.io_en((fdd_sel2 | (fdd_sel & ~addr[7])) & ~nIORQ & nM1),
-	.rd(~nRD),
-	.wr(~nWR),
-	.addr(plusd_en ? addr[4:3] : addr[6:5]),
-	.din(cpu_dout),
-	.dout(wd_dout),
-	.drq(fdd_drq),
-	.intrq(fdd_intrq),
+	.clkcpu(clk_sys),
+	.clk8m_en(ce_8m),
 
+	.floppy_drive(!fdd_drive1),
+	.floppy_side(!fdd_side),
+	.floppy_reset(!((fdd_reset & ~plusd_en) | reset)),
+	.floppy_step(),
+	.floppy_motor(),
+	.floppy_ready(),
+
+	// interrupts
+	.irq(fdd_intrq),
+	.drq(fdd_drq), // data request
+
+	.cpu_addr(plusd_en ? addr[4:3] : addr[6:5]),
+	.cpu_sel((fdd_sel2 | (fdd_sel & ~addr[7])) & ~nIORQ & nM1 & (~nWR | ~nRD)),
+	.cpu_rw(nWR),
+	.cpu_din(cpu_dout),
+	.cpu_dout(wd_dout),
+
+	.img_type(ioctl_ext_index == 1 ? 3'd5 : (ioctl_ext_index == 3 ? 3'd1 : 3'd4)),
 	.img_mounted(img_mounted[1]),
-	.img_size(img_size),
+	.img_size(ioctl_ext_index == 2 ? 0 : img_size),
+	.img_ds(1'b1),
 	.sd_lba(sd_lba_wd),
 	.sd_rd(sd_rd_wd),
 	.sd_wr(sd_wr_wd),
 	.sd_ack(sd_ack),
 	.sd_buff_addr(sd_buff_addr),
-	.sd_buff_dout(sd_buff_dout),
-	.sd_buff_din(sd_buff_din_wd),
-	.sd_buff_wr(sd_buff_wr),
-
-	.wp(0),
-
-	.size_code(plusd_en ? 3'd4 : 3'd1),
-	.layout(ioctl_ext_index == 1),
-	.side(fdd_side),
-	.ready(fdd_drive1 & fdd_ready),
-
-	.input_active(0),
-	.input_addr(0),
-	.input_data(0),
-	.input_wr(0),
-	.buff_din(0)
+	.sd_dout(sd_buff_dout),
+	.sd_din(sd_buff_din_wd),
+	.sd_dout_strobe(sd_buff_wr)
 );
 
 u765 #(20'd1800,1) u765
@@ -1130,7 +1135,7 @@ u765 #(20'd1800,1) u765
 	.dout(u765_dout),
 
 	.img_mounted(img_mounted[1]),
-	.img_size(img_size),
+	.img_size(ioctl_ext_index == 2 ? img_size : 0),
 	.img_wp(0),
 	.sd_lba(sd_lba_plus3),
 	.sd_rd(sd_rd_plus3),
