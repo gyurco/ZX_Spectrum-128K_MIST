@@ -762,11 +762,12 @@ gs #(.INT_DIV(373)) gs
 // Covox/SounDrive
 reg [7:0] sd_l0, sd_l1, sd_r0, sd_r1;
 
-wire covox_cs = ~nIORQ & ~nWR & nM1 && addr[7:0] == 8'hFB;
-wire soundrive_a_cs = ~nIORQ & ~nWR & nM1 && addr[7:0] == 8'h0F;
-wire soundrive_b_cs = ~nIORQ & ~nWR & nM1 && addr[7:0] == 8'h1F;
-wire soundrive_c_cs = ~nIORQ & ~nWR & nM1 && addr[7:0] == 8'h4F;
-wire soundrive_d_cs = ~nIORQ & ~nWR & nM1 && addr[7:0] == 8'h5F;
+wire ext_mem = trdos_en | plusd_mem | uspeech_en;
+wire covox_cs = ~ext_mem & ~nIORQ & ~nWR & nM1 && addr[7:0] == 8'hFB;
+wire soundrive_a_cs = ~ext_mem & ~nIORQ & ~nWR & nM1 && addr[7:0] == 8'h0F;
+wire soundrive_b_cs = ~ext_mem & ~nIORQ & ~nWR & nM1 && addr[7:0] == 8'h1F;
+wire soundrive_c_cs = ~ext_mem & ~nIORQ & ~nWR & nM1 && addr[7:0] == 8'h4F;
+wire soundrive_d_cs = ~ext_mem & ~nIORQ & ~nWR & nM1 && addr[7:0] == 8'h5F;
 
 always @(posedge clk_sys) begin
     if (reset) begin
