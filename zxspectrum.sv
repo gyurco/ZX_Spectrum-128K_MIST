@@ -849,7 +849,7 @@ sigma_delta_dac #(14) dac_r
 (
 	.CLK(clk_sys),
 	.RESET(reset),
-	.DACin(audio_mix_r[15] ? 15'h7FFF : audio_mix_l[14:0]),
+	.DACin(audio_mix_r[15] ? 15'h7FFF : audio_mix_r[14:0]),
 	.DACout(AUDIO_R)
 );
 
