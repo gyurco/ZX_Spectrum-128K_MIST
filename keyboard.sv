@@ -88,6 +88,7 @@ always @(posedge clk_sys) begin
 
 	if(input_strobe) begin
 		case(code)
+			8'h12: mod[0]<= ~release_btn; // left shift
 			8'h59: mod[0]<= ~release_btn; // right shift
 			8'h11: mod[1]<= ~release_btn; // alt
 			8'h14: mod[2]<= ~release_btn; // ctrl
