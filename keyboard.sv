@@ -42,7 +42,10 @@ module keyboard
 	input             reset,
 	input             clk_sys,
 
-	input      [10:0] ps2_key,
+	input             key_strobe,
+	input             key_pressed,
+	input             key_extended,
+	input       [7:0] key_code,
 
 	input      [15:0] addr,
 	output      [4:0] key_data,
@@ -268,22 +271,20 @@ always @(posedge clk_sys) begin
 	integer div;
 	reg [5:0] auto_pos = 0;
 	reg old_reset = 0;
-	reg old_state;
 
 	input_strobe <= 0;
 	old_reset <= reset;
-	old_state <= ps2_key[10];
 
 	if(~old_reset & reset)begin
 		auto_pos <= 0;
 	end else begin
 		if(auto[auto_pos] == 255) begin
 			div <=0;
-			if(old_state != ps2_key[10]) begin
-				release_btn <= ~ps2_key[9];
-				code <= ps2_key[7:0];
+			if(key_strobe) begin
+				release_btn <= ~key_pressed;
+				code <= key_code;
 				input_strobe <= 1;
-				if((ps2_key[8:0] == 'h78) && mod[2] && ~ps2_key[9]) auto_pos <= 1; // Ctrl+F10
+				if((key_code == 'h78) && ~key_extended && mod[2] && ~key_pressed) auto_pos <= 1; // Ctrl+F10
 			end
 		end else begin
 			div <= div + 1;

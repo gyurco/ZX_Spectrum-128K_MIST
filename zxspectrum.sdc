@@ -83,14 +83,6 @@ set_multicycle_path -to {smart_tape:tape|tape:tape|bitcnt[*]} -hold 1
 set_multicycle_path -to {turbosound:turbosound|YM2149:*} -setup 2
 set_multicycle_path -to {turbosound:turbosound|YM2149:*} -hold 1
 
-set_multicycle_path -from {wd1793:fdd|wd1793_dpram:sbuf|*} -setup 2
-set_multicycle_path -from {wd1793:fdd|wd1793_dpram:sbuf|*} -hold 1
-
-set_multicycle_path -to {wd1793:fdd|state[*]} -setup 2
-set_multicycle_path -to {wd1793:fdd|state[*]} -hold 1
-set_multicycle_path -to {wd1793:fdd|wait_time[*]} -setup 2
-set_multicycle_path -to {wd1793:fdd|wait_time[*]} -hold 1
-
 set_multicycle_path -from {u765:u765|u765_dpram:sbuf|*} -setup 2
 set_multicycle_path -from {u765:u765|u765_dpram:sbuf|*} -hold 1
 set_multicycle_path -from {u765:u765|altsyncram:image_track_offsets_rtl_0|*} -setup 2
@@ -117,9 +109,8 @@ set_multicycle_path -from {sp0256:sp0256|filter[*]} -hold 3
 set_multicycle_path -to {sp0256:sp0256|audio[*]} -setup 4
 set_multicycle_path -to {sp0256:sp0256|audio[*]} -hold 3
 
-# False paths
-
-set_false_path -to {video_mixer:video_mixer|scandoubler:scandoubler|Hq2x:Hq2x|*}
+set_multicycle_path -from {ULA:ULA|*} -to {mist_video:mist_video|scandoubler:scandoubler|*} -setup 2
+set_multicycle_path -from {ULA:ULA|*} -to {mist_video:mist_video|scandoubler:scandoubler|*} -hold 1
 
 # Don't bother optimizing sigma_delta_dac
 set_false_path -to {sigma_delta_dac:*}

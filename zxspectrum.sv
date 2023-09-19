@@ -86,7 +86,7 @@ localparam CONF_STR = {
 	"O12,Joystick 1,Sinclair I,Sinclair II,Kempston,Cursor;",
 	"O34,Joystick 2,Sinclair I,Sinclair II,Kempston,Cursor;",
 	"O6,Fast tape load,On,Off;",
-	"OFG,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%;",
+	"OFG,Scandoubler Fx,None,CRT 25%,CRT 50%,CRT 75%;",
 	"ODE,Features,ULA+ & Timex,ULA+,Timex,None;",
 	"OHI,MMC Card,Off,divMMC,ZXMMC,divMMC+ESXDOS;",
 	"OKL,General Sound,512KB,1MB,2MB,Disabled;",
@@ -204,9 +204,6 @@ end
 
 
 //////////////////   MIST ARM I/O   ///////////////////
-wire [10:0] ps2_key;
-wire [24:0] ps2_mouse;
-
 wire  [7:0] joystick_0;
 wire  [7:0] joystick_1;
 
@@ -214,15 +211,16 @@ wire  [1:0] buttons;
 wire  [1:0] switches;
 wire        scandoubler_disable;
 wire        ypbpr;
-wire [31:0] status;
+wire        no_csync;
+wire [63:0] status;
 
-wire 			sd_rd_plus3;
-wire 			sd_wr_plus3;
+wire        sd_rd_plus3;
+wire        sd_wr_plus3;
 wire [31:0] sd_lba_plus3;
 wire [7:0]  sd_buff_din_plus3;
 
-wire 			sd_rd_wd;
-wire 			sd_wr_wd;
+wire        sd_rd_wd;
+wire        sd_wr_wd;
 wire [31:0] sd_lba_wd;
 wire [7:0]  sd_buff_din_wd;
 
@@ -242,12 +240,71 @@ wire  [7:0] sd_buff_dout;
 wire  [7:0] sd_buff_din = sd_busy_mmc ? sd_buff_din_mmc : (plus3_fdd_ready ? sd_buff_din_plus3 : sd_buff_din_wd);
 wire        sd_buff_wr;
 wire  [1:0] img_mounted;
-wire [31:0] img_size;
+wire [63:0] img_size;
 
 wire        sd_ack_conf;
 wire        sd_conf;
 wire        sd_sdhc;
 
+wire        key_strobe;
+wire        key_pressed;
+wire        key_extended;
+wire  [7:0] key_code;
+
+wire  [8:0] mouse_x;
+wire  [8:0] mouse_y;
+wire  [7:0] mouse_flags;
+wire        mouse_strobe;
+
+wire [24:0] ps2_mouse = { mouse_strobe_level, mouse_y[7:0], mouse_x[7:0], mouse_flags };
+reg         mouse_strobe_level;
+always @(posedge clk_sys) if (mouse_strobe) mouse_strobe_level <= ~mouse_strobe_level;
+
+user_io #(.STRLEN($size(CONF_STR)>>3), .SD_IMAGES(2)) user_io
+(
+	.clk_sys(clk_sys),
+	.clk_sd(clk_sys),
+	.conf_str(CONF_STR),
+
+	.SPI_CLK(SPI_SCK),
+	.SPI_SS_IO(CONF_DATA0),
+	.SPI_MOSI(SPI_DI),
+	.SPI_MISO(SPI_DO),
+
+	.img_mounted(img_mounted),
+	.img_size(img_size),
+	.sd_conf(sd_conf),
+	.sd_ack_conf(sd_ack_conf),
+	.sd_sdhc(sd_sdhc),
+	.sd_lba(sd_lba),
+	.sd_rd(sd_rd),
+	.sd_wr(sd_wr),
+	.sd_ack(sd_ack),
+	.sd_buff_addr(sd_buff_addr),
+	.sd_din(sd_buff_din),
+	.sd_dout(sd_buff_dout),
+	.sd_dout_strobe(sd_buff_wr),
+
+	.key_strobe(key_strobe),
+	.key_code(key_code),
+	.key_pressed(key_pressed),
+	.key_extended(key_extended),
+
+	.mouse_x(mouse_x),
+	.mouse_y(mouse_y),
+	.mouse_flags(mouse_flags),
+	.mouse_strobe(mouse_strobe),
+
+	.joystick_0(joystick_0),
+	.joystick_1(joystick_1),
+
+	.buttons(buttons),
+	.status(status),
+	.scandoubler_disable(scandoubler_disable),
+	.ypbpr(ypbpr),
+	.no_csync(no_csync)
+
+);
 wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
@@ -255,22 +312,22 @@ wire        ioctl_download;
 wire  [5:0] ioctl_index;
 wire  [1:0] ioctl_ext_index;
 
-mist_io #(.STRLEN(($size(CONF_STR)>>3)+5)) mist_io
+data_io data_io
 (
-	.*,
-	.ioctl_ce(1),
-	.ioctl_index({ioctl_ext_index, ioctl_index}),
-	.conf_str({CONF_STR, plusd_en ? CONF_PLUSD : CONF_BDI}),
+	.clk_sys(clk_sys),
 
-	// unused
-	.ps2_kbd_clk(),
-	.ps2_kbd_data(),
-	.ps2_mouse_clk(),
-	.ps2_mouse_data(),
-	.joystick_analog_0(),
-	.joystick_analog_1()
+	.SPI_SCK(SPI_SCK),
+	.SPI_SS2(SPI_SS2),
+	.SPI_DI(SPI_DI),
+	.SPI_DO(SPI_DO),
+
+	.clkref_n(1'b0),
+	.ioctl_wr(ioctl_wr),
+	.ioctl_addr(ioctl_addr),
+	.ioctl_dout(ioctl_dout),
+	.ioctl_download(ioctl_download),
+	.ioctl_index({ioctl_ext_index, ioctl_index})
 );
-
 
 ///////////////////   CPU   ///////////////////
 wire [15:0] addr;
@@ -873,7 +930,6 @@ always_comb begin
 	endcase
 end
 
-wire [1:0] scale = st_scanlines;
 wire [2:0] Rx, Gx, Bx;
 wire       HSync, VSync, HBlank;
 wire       ulap_ena, ulap_mono, mode512;
@@ -884,21 +940,45 @@ wire       ula_nWR;
 
 ULA ULA(.*, .nPortRD(), .nPortWR(ula_nWR), .din(cpu_dout), .page_ram(page_ram[2:0]));
 
-video_mixer #(.LINE_LENGTH(896), .HALF_DEPTH(1)) video_mixer
-(
-	.*,
-	.ce_pix(ce_7mp | ce_7mn),
-	.ce_pix_actual(ce_7mp | (mode512 & ce_7mn)),
-	.hq2x(scale == 1),
-	.scanlines(scandoubler_disable ? 2'b00 : {scale==3, scale==2}),
+mist_video #(.COLOR_DEPTH(3), .SD_HCNT_WIDTH(11)) mist_video (
+	.clk_sys     ( clk_sys    ),
 
-	.line_start(0),
-	.ypbpr_full(1),
+	// OSD SPI interface
+	.SPI_SCK     ( SPI_SCK    ),
+	.SPI_SS3     ( SPI_SS3    ),
+	.SPI_DI      ( SPI_DI     ),
 
-	.R(Rx),
-	.G(Gx),
-	.B(Bx),
-	.mono(ulap_ena & ulap_mono)
+	// scanlines (00-none 01-25% 10-50% 11-75%)
+	.scanlines   ( st_scanlines  ),
+
+	// non-scandoubled pixel clock divider 0 - clk_sys/4, 1 - clk_sys/2
+	.ce_divider  ( 3'd7       ),
+
+	// 0 = HVSync 31KHz, 1 = CSync 15KHz
+	.scandoubler_disable ( scandoubler_disable ),
+	// disable csync without scandoubler
+	.no_csync    ( no_csync   ),
+	// YPbPr always uses composite sync
+	.ypbpr       ( ypbpr      ),
+	// Rotate OSD [0] - rotate [1] - left or right
+	.rotate      ( 2'b00      ),
+	// composite-like blending
+	.blend       ( 1'b0       ),
+
+	// video in
+	.R           ( Rx ),
+	.G           ( Gx ),
+	.B           ( Bx ),
+
+	.HSync       ( HSync      ),
+	.VSync       ( VSync      ),
+
+	// MiST video output signals
+	.VGA_R       ( VGA_R      ),
+	.VGA_G       ( VGA_G      ),
+	.VGA_B       ( VGA_B      ),
+	.VGA_VS      ( VGA_VS     ),
+	.VGA_HS      ( VGA_HS     )
 );
 
 ////////////////////   HID   ////////////////////
