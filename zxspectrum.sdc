@@ -99,8 +99,8 @@ set_multicycle_path -to {u765:u765|state[*]} -setup 2
 set_multicycle_path -to {u765:u765|state[*]} -hold 1
 set_multicycle_path -to {u765:u765|status[*]} -setup 2
 set_multicycle_path -to {u765:u765|status[*]} -hold 1
-set_multicycle_path -to {u765:u765|i_rpm_time[*][*][*]} -setup 8
-set_multicycle_path -to {u765:u765|i_rpm_time[*][*][*]} -hold 7
+
+set_false_path -to {u765:u765|i_rpm_time[*][*][*]}
 
 set_multicycle_path -from {sp0256:sp0256|sp0256_al2_decoded:sp0256_al2_decoded|*} -setup 4
 set_multicycle_path -from {sp0256:sp0256|sp0256_al2_decoded:sp0256_al2_decoded|*} -hold 3

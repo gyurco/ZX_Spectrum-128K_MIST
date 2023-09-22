@@ -80,7 +80,9 @@ module zxspectrum
 	output        I2S_LRCK,
 	output        I2S_DATA,
 `endif
-
+`ifdef USE_AUDIO_IN
+	input         AUDIO_IN,
+`endif
 	input         UART_RX,
 	output        UART_TX
 );
@@ -1353,8 +1355,14 @@ always @(posedge clk_sys) begin
 	end
 end
 
+wire ear_in;
+`ifdef USE_AUDIO_IN
+assign ear_in = AUDIO_IN;
+`else
+assign ear_in = UART_RX;
+`endif
 assign UART_TX = 1;
-assign tape_in = ~(tape_loaded_reg ? tape_vin : UART_RX);
+assign tape_in = ~(tape_loaded_reg ? tape_vin : ear_in);
 assign ula_tape_in = tape_in | ear_out | (st_issue2 & !tape_active & mic_out);
 
 //////////////////  SNAPSHOT  //////////////////
