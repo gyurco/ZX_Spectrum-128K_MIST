@@ -107,6 +107,14 @@ localparam VGA_BITS = 8;
 localparam VGA_BITS = 6;
 `endif
 
+`ifdef BIG_OSD
+localparam bit BIG_OSD = 1;
+localparam SEP = "-;";
+`else
+localparam bit BIG_OSD = 0;
+localparam SEP = "";
+`endif
+
 // remove this if the 2nd chip is actually used
 `ifdef DUAL_SDRAM
 assign SDRAM2_A = 13'hZZZZ;
@@ -146,8 +154,9 @@ localparam ARCH_P1024 = 5'b001_10; // Pentagon 1024
 localparam CONF_STR = {
 	"SPECTRUM;;",
 	"S1U,TRDIMGDSKMGT,Load Disk;",
-	"F,TAPCSWTZX,Load Tape;",
-	"F,Z80SNA,Load Snapshot;",
+	"F2,TAPCSWTZX,Load Tape;",
+	"F3,Z80SNA,Load Snapshot;",
+	SEP,
 	"O89,Video timings,ULA-48,ULA-128,Pentagon;",
 	"OAC,Memory,Standard 128K,Pentagon 1024K,Profi 1024K,Standard 48K,+2A/+3;",
 	"O12,Joystick 1,Sinclair I,Sinclair II,Kempston,Cursor;",
@@ -327,7 +336,7 @@ wire [24:0] ps2_mouse = { mouse_strobe_level, mouse_y[7:0], mouse_x[7:0], mouse_
 reg         mouse_strobe_level;
 always @(posedge clk_sys) if (mouse_strobe) mouse_strobe_level <= ~mouse_strobe_level;
 
-user_io #(.STRLEN($size(CONF_STR)>>3), .SD_IMAGES(2)) user_io
+user_io #(.STRLEN($size(CONF_STR)>>3), .SD_IMAGES(2), .FEATURES(32'h0 | (BIG_OSD << 13))) user_io
 (
 	.clk_sys(clk_sys),
 	.clk_sd(clk_sys),
@@ -1007,7 +1016,7 @@ wire       ula_nWR;
 
 ULA ULA(.*, .nPortRD(), .nPortWR(ula_nWR), .din(cpu_dout), .page_ram(page_ram[2:0]));
 
-mist_video #(.COLOR_DEPTH(3), .SD_HCNT_WIDTH(11), .OUT_COLOR_DEPTH(VGA_BITS)) mist_video (
+mist_video #(.COLOR_DEPTH(3), .SD_HCNT_WIDTH(11), .OUT_COLOR_DEPTH(VGA_BITS), .BIG_OSD(BIG_OSD)) mist_video (
 	.clk_sys     ( clk_sys    ),
 
 	// OSD SPI interface
