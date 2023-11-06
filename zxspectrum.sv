@@ -109,10 +109,10 @@ localparam VGA_BITS = 6;
 
 `ifdef BIG_OSD
 localparam bit BIG_OSD = 1;
-localparam SEP = "-;";
+`define SEP "-;",
 `else
 localparam bit BIG_OSD = 0;
-localparam SEP = "";
+`define SEP
 `endif
 
 // remove this if the 2nd chip is actually used
@@ -156,7 +156,7 @@ localparam CONF_STR = {
 	"S1U,TRDIMGDSKMGT,Load Disk;",
 	"F2,TAPCSWTZX,Load Tape;",
 	"F3,Z80SNA,Load Snapshot;",
-	SEP,
+	`SEP
 	"O89,Video timings,ULA-48,ULA-128,Pentagon;",
 	"OAC,Memory,Standard 128K,Pentagon 1024K,Profi 1024K,Standard 48K,+2A/+3;",
 	"O12,Joystick 1,Sinclair I,Sinclair II,Kempston,Cursor;",
