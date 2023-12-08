@@ -101,11 +101,11 @@ module pll (
 		altpll_component.clk0_divide_by = 27,
 		altpll_component.clk0_duty_cycle = 50,
 		altpll_component.clk0_multiply_by = 112,
-		altpll_component.clk0_phase_shift = "0",
+		altpll_component.clk0_phase_shift = "-248",
 		altpll_component.clk1_divide_by = 27,
 		altpll_component.clk1_duty_cycle = 50,
 		altpll_component.clk1_multiply_by = 112,
-		altpll_component.clk1_phase_shift = "-248",
+		altpll_component.clk1_phase_shift = "0",
 		altpll_component.inclk0_input_frequency = 37037,
 		altpll_component.intended_device_family = "Cyclone III",
 		altpll_component.lpm_hint = "CBX_MODULE_PREFIX=pll",
@@ -212,15 +212,15 @@ endmodule
 // Retrieval info: PRIVATE: MULT_FACTOR1 NUMERIC "112"
 // Retrieval info: PRIVATE: NORMAL_MODE_RADIO STRING "0"
 // Retrieval info: PRIVATE: OUTPUT_FREQ0 STRING "112.00000000"
-// Retrieval info: PRIVATE: OUTPUT_FREQ1 STRING "100.00000000"
+// Retrieval info: PRIVATE: OUTPUT_FREQ1 STRING "112.00000000"
 // Retrieval info: PRIVATE: OUTPUT_FREQ_MODE0 STRING "1"
-// Retrieval info: PRIVATE: OUTPUT_FREQ_MODE1 STRING "0"
+// Retrieval info: PRIVATE: OUTPUT_FREQ_MODE1 STRING "1"
 // Retrieval info: PRIVATE: OUTPUT_FREQ_UNIT0 STRING "MHz"
 // Retrieval info: PRIVATE: OUTPUT_FREQ_UNIT1 STRING "MHz"
 // Retrieval info: PRIVATE: PHASE_RECONFIG_FEATURE_ENABLED STRING "1"
 // Retrieval info: PRIVATE: PHASE_RECONFIG_INPUTS_CHECK STRING "0"
-// Retrieval info: PRIVATE: PHASE_SHIFT0 STRING "0.00000000"
-// Retrieval info: PRIVATE: PHASE_SHIFT1 STRING "-10.00000000"
+// Retrieval info: PRIVATE: PHASE_SHIFT0 STRING "-10.00000000"
+// Retrieval info: PRIVATE: PHASE_SHIFT1 STRING "0.00000000"
 // Retrieval info: PRIVATE: PHASE_SHIFT_STEP_ENABLED_CHECK STRING "0"
 // Retrieval info: PRIVATE: PHASE_SHIFT_UNIT0 STRING "deg"
 // Retrieval info: PRIVATE: PHASE_SHIFT_UNIT1 STRING "deg"
@@ -261,11 +261,11 @@ endmodule
 // Retrieval info: CONSTANT: CLK0_DIVIDE_BY NUMERIC "27"
 // Retrieval info: CONSTANT: CLK0_DUTY_CYCLE NUMERIC "50"
 // Retrieval info: CONSTANT: CLK0_MULTIPLY_BY NUMERIC "112"
-// Retrieval info: CONSTANT: CLK0_PHASE_SHIFT STRING "0"
+// Retrieval info: CONSTANT: CLK0_PHASE_SHIFT STRING "-248"
 // Retrieval info: CONSTANT: CLK1_DIVIDE_BY NUMERIC "27"
 // Retrieval info: CONSTANT: CLK1_DUTY_CYCLE NUMERIC "50"
 // Retrieval info: CONSTANT: CLK1_MULTIPLY_BY NUMERIC "112"
-// Retrieval info: CONSTANT: CLK1_PHASE_SHIFT STRING "-248"
+// Retrieval info: CONSTANT: CLK1_PHASE_SHIFT STRING "0"
 // Retrieval info: CONSTANT: INCLK0_INPUT_FREQUENCY NUMERIC "37037"
 // Retrieval info: CONSTANT: INTENDED_DEVICE_FAMILY STRING "Cyclone III"
 // Retrieval info: CONSTANT: LPM_TYPE STRING "altpll"

@@ -73,6 +73,7 @@ module ULA
 	output reg        HSync,
 	output reg        VSync,
 	output reg        HBlank,
+	output reg        VBlank,
 	output reg  [2:0] Rx,
 	output reg  [2:0] Gx,
 	output reg  [2:0] Bx
@@ -151,9 +152,13 @@ always @(posedge clk_sys) begin
 		if(mZX) begin
 			if(vc_next == 240) VSync <= 1;
 				else if (vc_next == 244) VSync <= 0;
+			if(vc_next == 232) VBlank <= 1;
+				else if(vc_next == 257) VBlank <= 0;
 		end else begin
 			if(vc_next == 248) VSync <= 1;
 				else if (vc_next == 256) VSync <= 0;
+			if(vc_next == 236) VBlank <= 1;
+				else if(vc_next == 272) VBlank <= 0;
 		end
 
 		if( mZX && (vc_next == 248) && (hc_next == (m128 ? 8 : 4))) INT <= 1;

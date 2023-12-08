@@ -287,8 +287,8 @@ set_global_assignment -name OPTIMIZE_IOC_REGISTER_PLACEMENT_FOR_TIMING "PACK ALL
 
 
 set_global_assignment -name SEED 0
-set_global_assignment -name USE_SIGNALTAP_FILE output_files/fdc.stp
-set_global_assignment -name QIP_FILE pll.qip
+set_global_assignment -name USE_SIGNALTAP_FILE output_files/stp1.stp
+set_global_assignment -name QIP_FILE cyc3/pll.qip
 set_global_assignment -name QIP_FILE zxspectrum.qip
 set_global_assignment -name SDC_FILE zxspectrum.sdc
 
