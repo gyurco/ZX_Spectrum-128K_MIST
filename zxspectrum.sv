@@ -1191,7 +1191,7 @@ i2s i2s (
 );
 `ifdef I2S_AUDIO_HDMI
 assign HDMI_MCLK = 0;
-always @(posedge CLK_sys) begin
+always @(posedge clk_sys) begin
 	HDMI_BCK <= I2S_BCK;
 	HDMI_LRCK <= I2S_LRCK;
 	HDMI_SDATA <= I2S_DATA;
