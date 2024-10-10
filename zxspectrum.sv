@@ -877,6 +877,9 @@ wire        psg_enable = addr[0] & addr[15] & ~addr[1];
 wire        psg_we     = psg_enable & ~nIORQ & ~nWR & nM1;
 reg         psg_reset;
 
+wire [7:0] ioa_out;
+wire midi_out = ioa_out[2];
+
 // Turbosound card (Dual AY/YM chips)
 turbosound turbosound
 (
@@ -891,7 +894,10 @@ turbosound turbosound
 	.AUDIO_R(psg_right),
 
 	.IOA_in(0),
-	.IOB_in(0)
+	.IOA_out(ioa_out),
+	.IOB_in(0),
+	.IOB_out()
+
 );
 
 // General Sound
@@ -1535,7 +1541,6 @@ assign ear_in = AUDIO_IN;
 `else
 assign ear_in = UART_RX;
 `endif
-assign UART_TX = 1;
 assign tape_in = ~(tape_loaded_reg ? tape_vin : ear_in);
 assign ula_tape_in = tape_in | ear_out | (st_issue2 & !tape_active & mic_out);
 
@@ -1629,5 +1634,23 @@ snap_loader #(ARCH_ZX48, ARCH_ZX128, ARCH_ZX3, ARCH_P128) snap_loader
 	.reg_1ffd(snap_1ffd),
 	.reg_7ffd(snap_7ffd)
 );
+
+//////////////////  UART_TX  //////////////////
+reg uart_tx = 1'b1;
+reg mic_out_old = 1'b0;
+reg midi_out_old = 1'b0;
+
+always @(posedge clk_sys) begin
+	if (mic_out_old != mic_out) begin
+		mic_out_old <= mic_out;
+		uart_tx <= mic_out;
+	end
+	if (midi_out_old != midi_out) begin
+		midi_out_old <= midi_out;
+		uart_tx <= midi_out;
+	end
+end
+
+assign UART_TX = uart_tx;
 
 endmodule

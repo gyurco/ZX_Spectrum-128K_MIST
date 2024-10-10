@@ -23,7 +23,8 @@ Some verilog models from Till Harbaum [Spectrum](https://github.com/mist-devel/m
 - Covox at #FB port and SounDrive at #0F,#1F,#4F,#5F ports.
 - Currah uSpeech interface.
 - General Sound Interface.
-- Audio in from real [tape device](http://www.atari-forum.com/viewtopic.php?p=298401#p298401).
+- Audio in/out to real [tape device](http://www.atari-forum.com/viewtopic.php?p=298401#p298401).
+- MIDI output.
 
 **Core requires MiST firmware update to build 2016/06/26 or newer!**
 
