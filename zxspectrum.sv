@@ -527,7 +527,7 @@ always_comb begin
 		'b01X00000001XXX: cpu_din = (addr[14] ? sound_data : 8'hFF);
 		'b01X000000001XX: cpu_din = unouart_dout;
 		'b01X0000000001X: cpu_din = ulap_dout;
-		'b01X00000000000: cpu_din = {1'b1, ula_tape_in, 1'b1, key_data[4:0] & joy_kbd};
+		'b01X00000000000: cpu_din = {1'b1, ula_tape_in, 1'b1, key_data[4:0] & joy_kbd & rst_kbd};
 		default: cpu_din = port_ff;
 	endcase
 end
@@ -578,6 +578,17 @@ always @(posedge clk_sys) begin
 	else if (~NMI_old & NMI) NMI_pending <= 1;
 	else if (~m1 && old_m1 && (addr == 'h66)) NMI_pending <= 0;
 end
+
+// To reset esxDOS on cold reset we need to hold Space key
+reg [5:0] esxdos_reset_cnt = 0;
+always @(posedge clk_sys) begin
+	if (cold_reset && st_mmc == 2'b11)
+		esxdos_reset_cnt <= 1'd1;
+	else if (esxdos_reset_cnt && VSync && !VSync_old)
+		esxdos_reset_cnt <= esxdos_reset_cnt + 1'd1;
+end
+wire [4:0] rst_kbd = {5{addr[15]}} | {4'b1111, ~|esxdos_reset_cnt};
+
 
 //////////////////   MEMORY   //////////////////
 wire        dma = (reset | ~nBUSACK) & ~nBUSRQ;
