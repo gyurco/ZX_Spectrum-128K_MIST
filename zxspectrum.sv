@@ -199,6 +199,7 @@ localparam CONF_STR = {
 	"OJ,Currah uSpeech,Off,On;",
 	"O5,Keyboard,Issue 3,Issue 2;",
 	"O7,Snowing,Enabled,Unrained;",
+	"OM,CPU type,NMOS,CMOS;",
 	"T0,Reset;",
 	"V,v3.40.",`BUILD_DATE
 };
@@ -214,6 +215,7 @@ wire [1:0] st_gs_memory   = status[21:20];
 wire       st_issue2      = status[5];
 wire       st_unrainer    = status[7];
 wire       st_uspeech     = status[19];
+wire       st_out0        = status[22];
 
 ////////////////////   CLOCKS   ///////////////////
 wire clk_sys, clk_hdmi;
@@ -510,7 +512,8 @@ T80pa cpu
 	.DI(cpu_din),
 	.REG(cpu_reg),
 	.DIR(snap_REG),
-	.DIRSet(snap_REGSet)
+	.DIRSet(snap_REGSet),
+	.OUT0(st_out0),
 );
 
 always_comb begin
