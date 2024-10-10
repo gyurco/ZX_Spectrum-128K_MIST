@@ -164,7 +164,7 @@ assign SDRAM2_nWE = 1;
 
 `default_nettype none
 
-assign LED = ~(ioctl_download | tape_led);
+assign LED = ~(ioctl_download | tape_led | unouart_act);
 
 localparam CONF_BDI   = "(BDI)";
 localparam CONF_PLUSD = "(+D) ";
@@ -514,19 +514,20 @@ T80pa cpu
 );
 
 always_comb begin
-	casex({sp0256_sel, nMREQ, tape_dout_en, ~nM1 | nIORQ | nRD, fdd_sel | fdd_sel2 | plus3_fdd, mf3_port, mmc_sel, addr[5:0]==6'h1F, portBF, gs_sel, psg_enable, ulap_sel, addr[0]})
-		'b1XXXXXXXXXXXX: cpu_din = {7'b1111111, ~sp0256_rdy};
-		'b001XXXXXXXXXX: cpu_din = tape_dout;
-		'b000XXXXXXXXXX: cpu_din = ram_dout;
-		'b01X01XXXXXXXX: cpu_din = fdd_dout;
-		'b01X001XXXXXXX: cpu_din = (addr[14:13] == 2'b11 ? page_reg : page_reg_plus3);
-		'b01X0001XXXXXX: cpu_din = mmc_dout;
-		'b01X00001XXXXX: cpu_din = mouse_sel ? mouse_data : joy_kempston;
-		'b01X000001XXXX: cpu_din = {page_scr_copy, 7'b1111111};
-		'b01X0000001XXX: cpu_din = gs_dout;
-		'b01X00000001XX: cpu_din = (addr[14] ? sound_data : 8'hFF);
-		'b01X000000001X: cpu_din = ulap_dout;
-		'b01X0000000000: cpu_din = {1'b1, ula_tape_in, 1'b1, key_data[4:0] & joy_kbd};
+	casex({sp0256_sel, nMREQ, tape_dout_en, ~nM1 | nIORQ | nRD, fdd_sel | fdd_sel2 | plus3_fdd, mf3_port, mmc_sel, addr[5:0]==6'h1F, portBF, gs_sel, psg_enable, unouart_dout_oe, ulap_sel, addr[0]})
+		'b1XXXXXXXXXXXXX: cpu_din = {7'b1111111, ~sp0256_rdy};
+		'b001XXXXXXXXXXX: cpu_din = tape_dout;
+		'b000XXXXXXXXXXX: cpu_din = ram_dout;
+		'b01X01XXXXXXXXX: cpu_din = fdd_dout;
+		'b01X001XXXXXXXX: cpu_din = (addr[14:13] == 2'b11 ? page_reg : page_reg_plus3);
+		'b01X0001XXXXXXX: cpu_din = mmc_dout;
+		'b01X00001XXXXXX: cpu_din = mouse_sel ? mouse_data : joy_kempston;
+		'b01X000001XXXXX: cpu_din = {page_scr_copy, 7'b1111111};
+		'b01X0000001XXXX: cpu_din = gs_dout;
+		'b01X00000001XXX: cpu_din = (addr[14] ? sound_data : 8'hFF);
+		'b01X000000001XX: cpu_din = unouart_dout;
+		'b01X0000000001X: cpu_din = ulap_dout;
+		'b01X00000000000: cpu_din = {1'b1, ula_tape_in, 1'b1, key_data[4:0] & joy_kbd};
 		default: cpu_din = port_ff;
 	endcase
 end
@@ -1539,7 +1540,7 @@ wire ear_in;
 `ifdef USE_AUDIO_IN
 assign ear_in = AUDIO_IN;
 `else
-assign ear_in = UART_RX;
+assign ear_in = unouart_act? 1'b1 : UART_RX;
 `endif
 assign tape_in = ~(tape_loaded_reg ? tape_vin : ear_in);
 assign ula_tape_in = tape_in | ear_out | (st_issue2 & !tape_active & mic_out);
@@ -1635,10 +1636,42 @@ snap_loader #(ARCH_ZX48, ARCH_ZX128, ARCH_ZX3, ARCH_P128) snap_loader
 	.reg_7ffd(snap_7ffd)
 );
 
+
+////////////////// UNO UART (WiFi)  //////////////////
+wire [7:0] unouart_dout;
+wire unouart_dout_oe;
+wire unouart_tx;
+unouart #( .CLK(112_000_000), .BPS(115200) ) unouart0(
+	.clk(clk_sys),
+	.rst_n(~reset),
+	.nWR(nWR),
+	.nRD(nRD),
+	.nIORQ(nIORQ),
+	.addr(addr),
+	.din(cpu_dout),
+	.dout(unouart_dout),
+	.oe(unouart_dout_oe),
+	.uart_rx(UART_RX),
+	.uart_tx(unouart_tx)
+);
+
+reg VSync_old = 1'b0;
+always @(posedge clk_sys)
+	VSync_old <= VSync;
+reg [4:0] unouart_act = 1'b0;
+always @(posedge clk_sys) begin
+	if (unouart_dout_oe)
+		unouart_act <= 1'd1;
+	else if (unouart_act && VSync && !VSync_old)
+		unouart_act <= unouart_act + 1'd1;
+end
+
+
 //////////////////  UART_TX  //////////////////
 reg uart_tx = 1'b1;
 reg mic_out_old = 1'b0;
 reg midi_out_old = 1'b0;
+reg unouart_tx_old = 1'b0;
 
 always @(posedge clk_sys) begin
 	if (mic_out_old != mic_out) begin
@@ -1648,6 +1681,10 @@ always @(posedge clk_sys) begin
 	if (midi_out_old != midi_out) begin
 		midi_out_old <= midi_out;
 		uart_tx <= midi_out;
+	end
+	if (unouart_tx_old != unouart_tx || unouart_act) begin
+		unouart_tx_old <= unouart_tx;
+		uart_tx <= unouart_tx;
 	end
 end
 
