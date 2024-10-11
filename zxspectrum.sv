@@ -200,6 +200,7 @@ localparam CONF_STR = {
 	"O5,Keyboard,Issue 3,Issue 2;",
 	"O7,Snowing,Enabled,Unrained;",
 	"OM,CPU type,NMOS,CMOS;",
+	"ONP,CPU frequency,3.5 MHz,7 MHz,14 MHz,28 MHz,56 MHz;",
 	"T0,Reset;",
 	"V,v3.40.",`BUILD_DATE
 };
@@ -216,6 +217,7 @@ wire       st_issue2      = status[5];
 wire       st_unrainer    = status[7];
 wire       st_uspeech     = status[19];
 wire       st_out0        = status[22];
+wire [2:0] st_cpu_freq    = status[25:23];
 
 ////////////////////   CLOCKS   ///////////////////
 wire clk_sys, clk_hdmi;
@@ -276,24 +278,37 @@ always @(posedge clk_sys) begin
 	end
 end
 
-reg [4:0] turbo = 5'b11111, turbo_key = 5'b11111;
+reg [4:0] turbo = 5'b11111, turbo_reg = 5'b11111;
 always @(posedge clk_sys) begin
 	reg [9:4] old_Fn;
+	reg [2:0] old_st;
 	old_Fn <= Fn[9:4];
+	old_st <= st_cpu_freq;
 
 	if(reset) pause <= 0;
 
 	if(!mod) begin
-		if(~old_Fn[4] & Fn[4]) turbo_key <= 5'b11111; //3.5 MHz
-		if(~old_Fn[5] & Fn[5]) turbo_key <= 5'b01111; //  7 Mhz
-		if(~old_Fn[6] & Fn[6]) turbo_key <= 5'b00111; // 14 MHz
-		if(~old_Fn[7] & Fn[7]) turbo_key <= 5'b00011; // 28 MHz
-		if(~old_Fn[8] & Fn[8]) turbo_key <= 5'b00001; // 56 MHz
+		if(~old_Fn[4] & Fn[4]) turbo_reg <= 5'b11111; //3.5 MHz
+		if(~old_Fn[5] & Fn[5]) turbo_reg <= 5'b01111; //  7 Mhz
+		if(~old_Fn[6] & Fn[6]) turbo_reg <= 5'b00111; // 14 MHz
+		if(~old_Fn[7] & Fn[7]) turbo_reg <= 5'b00011; // 28 MHz
+		if(~old_Fn[8] & Fn[8]) turbo_reg <= 5'b00001; // 56 MHz
 		if(~old_Fn[9] & Fn[9]) pause <= ~pause;
+	end
+
+	if(st_cpu_freq != old_st) begin
+		case(st_cpu_freq)
+			3'd0:    turbo_reg <= 5'b11111; //3.5 MHz
+			3'd1:    turbo_reg <= 5'b01111; //  7 Mhz
+			3'd2:    turbo_reg <= 5'b00111; // 14 MHz
+			3'd3:    turbo_reg <= 5'b00011; // 28 MHz
+			3'd4:    turbo_reg <= 5'b00001; // 56 MHz
+			default: turbo_reg <= 5'b11111; //3.5 MHz
+		endcase
 	end
 end
 
-wire [4:0] turbo_req = (tape_active & ~st_fast_tape) ? 5'b00001 : turbo_key;
+wire [4:0] turbo_req = (tape_active & ~st_fast_tape) ? 5'b00001 : turbo_reg;
 always @(posedge clk_sys) begin
 	reg [1:0] timeout;
 
