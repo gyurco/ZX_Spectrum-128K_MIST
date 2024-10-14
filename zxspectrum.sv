@@ -313,8 +313,8 @@ end
 
 
 //////////////////   MIST ARM I/O   ///////////////////
-wire  [7:0] joystick_0;
-wire  [7:0] joystick_1;
+wire  [31:0] joystick_0;
+wire  [31:0] joystick_1;
 
 wire  [1:0] buttons;
 wire  [1:0] switches;
@@ -521,7 +521,7 @@ always_comb begin
 		'b01X01XXXXXXXX: cpu_din = fdd_dout;
 		'b01X001XXXXXXX: cpu_din = (addr[14:13] == 2'b11 ? page_reg : page_reg_plus3);
 		'b01X0001XXXXXX: cpu_din = mmc_dout;
-		'b01X00001XXXXX: cpu_din = mouse_sel ? mouse_data : {2'b00, joy_kempston};
+		'b01X00001XXXXX: cpu_din = mouse_sel ? mouse_data : joy_kempston;
 		'b01X000001XXXX: cpu_din = {page_scr_copy, 7'b1111111};
 		'b01X0000001XXX: cpu_din = gs_dout;
 		'b01X00000001XX: cpu_din = (addr[14] ? sound_data : 8'hFF);
@@ -1216,27 +1216,27 @@ wire  [2:0] mod;
 wire  [4:0] key_data;
 keyboard kbd( .* );
 
-reg   [5:0] joy_kempston;
+reg   [7:0] joy_kempston;
 reg   [4:0] joy_sinclair1;
 reg   [4:0] joy_sinclair2;
 reg   [4:0] joy_cursor;
 
 always @(*) begin
-	joy_kempston = 6'h0;
+	joy_kempston = 8'h0;
 	joy_sinclair1 = 5'h0;
 	joy_sinclair2 = 5'h0;
 	joy_cursor = 5'h0;
 	case (st_joy1)
 		2'b00: joy_sinclair1 |= joystick_0[4:0];
 		2'b01: joy_sinclair2 |= joystick_0[4:0];
-		2'b10: joy_kempston  |= joystick_0[5:0];
+		2'b10: joy_kempston  |= {joystick_0[9:8], joystick_0[5:0]};
 		2'b11: joy_cursor    |= joystick_0[4:0];
 		default: ;
 	endcase
 	case (st_joy2)
 		2'b00: joy_sinclair1 |= joystick_1[4:0];
 		2'b01: joy_sinclair2 |= joystick_1[4:0];
-		2'b10: joy_kempston  |= joystick_1[5:0];
+		2'b10: joy_kempston  |= {joystick_1[9:8], joystick_1[5:0]};
 		2'b11: joy_cursor    |= joystick_1[4:0];
 		default: ;
 	endcase
@@ -1253,7 +1253,7 @@ always @(posedge clk_sys) begin
 	reg old_status = 0;
 	old_status <= ps2_mouse[24];
 
-	if(joy_kempston[5:0]) mouse_sel <= 0;
+	if(joy_kempston[7:0]) mouse_sel <= 0;
 	if(old_status != ps2_mouse[24]) mouse_sel <= 1;
 end
 
