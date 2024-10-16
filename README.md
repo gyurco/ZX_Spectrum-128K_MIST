@@ -23,7 +23,9 @@ Some verilog models from Till Harbaum [Spectrum](https://github.com/mist-devel/m
 - Covox at #FB port and SounDrive at #0F,#1F,#4F,#5F ports.
 - Currah uSpeech interface.
 - General Sound Interface.
-- Audio in from real [tape device](http://www.atari-forum.com/viewtopic.php?p=298401#p298401).
+- WiFi support.
+- Audio in/out to real [tape device](http://www.atari-forum.com/viewtopic.php?p=298401#p298401).
+- MIDI output.
 
 **Core requires MiST firmware update to build 2016/06/26 or newer!**
 
@@ -73,6 +75,8 @@ You can control CPU speed by following keys:
 - F8 - 56MHz
 - F9 - pause/continue
 
+Also you can control CPU speed within OSD menu. Latest used control method takes priority.
+
 It's useful to switch to maximum speed when you are loading tape in normal mode. Due to SDRAM speed limitation 28MHz and 56MHz speeds include wait states, so effective CPU speed is lower than nominal.
 
 ### Memory Configurations with extra RAM:
@@ -102,6 +106,13 @@ If you prefer to use bare Multiface 128 ROM then do following procedure: Press a
 You will be able to use bare Multiface ROM by simple subsequent presses of **RShift+F10** till core reload. Multiface provides snapshot functionality by saving to IMG/MGT disks. Please find and read Multiface 128 manual.
 **Note:** Multiface 128 expose its port, thus if game has protection against Multiface, it won't work, unless you press (o)ff before you exit from the Multiface menu. Thus using +D snapshot is prefered.
 When using the Spectrum +2A/3 mode, the Multiface 3 is supported. There's no Genie for the +3, but there are useful toolkit routines in the stock ROM.
+
+### WiFi:
+You can use ESP8266 WiFi module connected to MIST's UART.
+Recommended ESP's firmware version is ESP8266_NONOS_SDK-3.0.6 or newer.
+WiFi is implemented in way compatible with ZX-UNO, so all software is compatible.
+For example you can use [Moon Rabbit](https://github.com/nihirash/moon-rabbit-zx) gopher browser to play some music online or watch images.
+For reliable operation you should set high CPU frequency using F8 key.
 
 ### MMC Cards:
 DivMMC or ZXMMC compatible SD Card interfaces can be enabled in the OSD. DivMMC optionally supports 8K built in ROM and 256K RAM. The default **spectrum.rom** file contains ESXDOS 0.8.8 preloaded

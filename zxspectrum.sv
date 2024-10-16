@@ -164,7 +164,7 @@ assign SDRAM2_nWE = 1;
 
 `default_nettype none
 
-assign LED = ~(ioctl_download | tape_led);
+assign LED = ~(ioctl_download | tape_led | unouart_act);
 
 localparam CONF_BDI   = "(BDI)";
 localparam CONF_PLUSD = "(+D) ";
@@ -199,6 +199,8 @@ localparam CONF_STR = {
 	"OJ,Currah uSpeech,Off,On;",
 	"O5,Keyboard,Issue 3,Issue 2;",
 	"O7,Snowing,Enabled,Unrained;",
+	"OM,CPU type,NMOS,CMOS;",
+	"ONP,CPU frequency,3.5 MHz,7 MHz,14 MHz,28 MHz,56 MHz;",
 	"T0,Reset;",
 	"V,v3.40.",`BUILD_DATE
 };
@@ -214,6 +216,8 @@ wire [1:0] st_gs_memory   = status[21:20];
 wire       st_issue2      = status[5];
 wire       st_unrainer    = status[7];
 wire       st_uspeech     = status[19];
+wire       st_out0        = status[22];
+wire [2:0] st_cpu_freq    = status[25:23];
 
 ////////////////////   CLOCKS   ///////////////////
 wire clk_sys, clk_hdmi;
@@ -274,24 +278,37 @@ always @(posedge clk_sys) begin
 	end
 end
 
-reg [4:0] turbo = 5'b11111, turbo_key = 5'b11111;
+reg [4:0] turbo = 5'b11111, turbo_reg = 5'b11111;
 always @(posedge clk_sys) begin
 	reg [9:4] old_Fn;
+	reg [2:0] old_st;
 	old_Fn <= Fn[9:4];
+	old_st <= st_cpu_freq;
 
 	if(reset) pause <= 0;
 
 	if(!mod) begin
-		if(~old_Fn[4] & Fn[4]) turbo_key <= 5'b11111; //3.5 MHz
-		if(~old_Fn[5] & Fn[5]) turbo_key <= 5'b01111; //  7 Mhz
-		if(~old_Fn[6] & Fn[6]) turbo_key <= 5'b00111; // 14 MHz
-		if(~old_Fn[7] & Fn[7]) turbo_key <= 5'b00011; // 28 MHz
-		if(~old_Fn[8] & Fn[8]) turbo_key <= 5'b00001; // 56 MHz
+		if(~old_Fn[4] & Fn[4]) turbo_reg <= 5'b11111; //3.5 MHz
+		if(~old_Fn[5] & Fn[5]) turbo_reg <= 5'b01111; //  7 Mhz
+		if(~old_Fn[6] & Fn[6]) turbo_reg <= 5'b00111; // 14 MHz
+		if(~old_Fn[7] & Fn[7]) turbo_reg <= 5'b00011; // 28 MHz
+		if(~old_Fn[8] & Fn[8]) turbo_reg <= 5'b00001; // 56 MHz
 		if(~old_Fn[9] & Fn[9]) pause <= ~pause;
+	end
+
+	if(st_cpu_freq != old_st) begin
+		case(st_cpu_freq)
+			3'd0:    turbo_reg <= 5'b11111; //3.5 MHz
+			3'd1:    turbo_reg <= 5'b01111; //  7 Mhz
+			3'd2:    turbo_reg <= 5'b00111; // 14 MHz
+			3'd3:    turbo_reg <= 5'b00011; // 28 MHz
+			3'd4:    turbo_reg <= 5'b00001; // 56 MHz
+			default: turbo_reg <= 5'b11111; //3.5 MHz
+		endcase
 	end
 end
 
-wire [4:0] turbo_req = (tape_active & ~st_fast_tape) ? 5'b00001 : turbo_key;
+wire [4:0] turbo_req = (tape_active & ~st_fast_tape) ? 5'b00001 : turbo_reg;
 always @(posedge clk_sys) begin
 	reg [1:0] timeout;
 
@@ -313,8 +330,8 @@ end
 
 
 //////////////////   MIST ARM I/O   ///////////////////
-wire  [7:0] joystick_0;
-wire  [7:0] joystick_1;
+wire  [31:0] joystick_0;
+wire  [31:0] joystick_1;
 
 wire  [1:0] buttons;
 wire  [1:0] switches;
@@ -510,23 +527,25 @@ T80pa cpu
 	.DI(cpu_din),
 	.REG(cpu_reg),
 	.DIR(snap_REG),
-	.DIRSet(snap_REGSet)
+	.DIRSet(snap_REGSet),
+	.OUT0(st_out0),
 );
 
 always_comb begin
-	casex({sp0256_sel, nMREQ, tape_dout_en, ~nM1 | nIORQ | nRD, fdd_sel | fdd_sel2 | plus3_fdd, mf3_port, mmc_sel, addr[5:0]==6'h1F, portBF, gs_sel, psg_enable, ulap_sel, addr[0]})
-		'b1XXXXXXXXXXXX: cpu_din = {7'b1111111, ~sp0256_rdy};
-		'b001XXXXXXXXXX: cpu_din = tape_dout;
-		'b000XXXXXXXXXX: cpu_din = ram_dout;
-		'b01X01XXXXXXXX: cpu_din = fdd_dout;
-		'b01X001XXXXXXX: cpu_din = (addr[14:13] == 2'b11 ? page_reg : page_reg_plus3);
-		'b01X0001XXXXXX: cpu_din = mmc_dout;
-		'b01X00001XXXXX: cpu_din = mouse_sel ? mouse_data : {2'b00, joy_kempston};
-		'b01X000001XXXX: cpu_din = {page_scr_copy, 7'b1111111};
-		'b01X0000001XXX: cpu_din = gs_dout;
-		'b01X00000001XX: cpu_din = (addr[14] ? sound_data : 8'hFF);
-		'b01X000000001X: cpu_din = ulap_dout;
-		'b01X0000000000: cpu_din = {1'b1, ula_tape_in, 1'b1, key_data[4:0] & joy_kbd};
+	casex({sp0256_sel, nMREQ, tape_dout_en, ~nM1 | nIORQ | nRD, fdd_sel | fdd_sel2 | plus3_fdd, mf3_port, mmc_sel, addr[5:0]==6'h1F, portBF, gs_sel, psg_enable, unouart_dout_oe, ulap_sel, addr[0]})
+		'b1XXXXXXXXXXXXX: cpu_din = {7'b1111111, ~sp0256_rdy};
+		'b001XXXXXXXXXXX: cpu_din = tape_dout;
+		'b000XXXXXXXXXXX: cpu_din = ram_dout;
+		'b01X01XXXXXXXXX: cpu_din = fdd_dout;
+		'b01X001XXXXXXXX: cpu_din = (addr[14:13] == 2'b11 ? page_reg : page_reg_plus3);
+		'b01X0001XXXXXXX: cpu_din = mmc_dout;
+		'b01X00001XXXXXX: cpu_din = mouse_sel ? mouse_data : joy_kempston;
+		'b01X000001XXXXX: cpu_din = {page_scr_copy, 7'b1111111};
+		'b01X0000001XXXX: cpu_din = gs_dout;
+		'b01X00000001XXX: cpu_din = (addr[14] ? sound_data : 8'hFF);
+		'b01X000000001XX: cpu_din = unouart_dout;
+		'b01X0000000001X: cpu_din = ulap_dout;
+		'b01X00000000000: cpu_din = {1'b1, ula_tape_in, 1'b1, key_data[4:0] & joy_kbd & rst_kbd};
 		default: cpu_din = port_ff;
 	endcase
 end
@@ -577,6 +596,17 @@ always @(posedge clk_sys) begin
 	else if (~NMI_old & NMI) NMI_pending <= 1;
 	else if (~m1 && old_m1 && (addr == 'h66)) NMI_pending <= 0;
 end
+
+// To reset esxDOS on cold reset we need to hold Space key
+reg [5:0] esxdos_reset_cnt = 0;
+always @(posedge clk_sys) begin
+	if (cold_reset && st_mmc == 2'b11)
+		esxdos_reset_cnt <= 1'd1;
+	else if (esxdos_reset_cnt && VSync && !VSync_old)
+		esxdos_reset_cnt <= esxdos_reset_cnt + 1'd1;
+end
+wire [4:0] rst_kbd = {5{addr[15]}} | {4'b1111, ~|esxdos_reset_cnt};
+
 
 //////////////////   MEMORY   //////////////////
 wire        dma = (reset | ~nBUSACK) & ~nBUSRQ;
@@ -877,6 +907,9 @@ wire        psg_enable = addr[0] & addr[15] & ~addr[1];
 wire        psg_we     = psg_enable & ~nIORQ & ~nWR & nM1;
 reg         psg_reset;
 
+wire [7:0] ioa_out;
+wire midi_out = ioa_out[2];
+
 // Turbosound card (Dual AY/YM chips)
 turbosound turbosound
 (
@@ -891,7 +924,10 @@ turbosound turbosound
 	.AUDIO_R(psg_right),
 
 	.IOA_in(0),
-	.IOB_in(0)
+	.IOA_out(ioa_out),
+	.IOB_in(0),
+	.IOB_out()
+
 );
 
 // General Sound
@@ -1216,27 +1252,27 @@ wire  [2:0] mod;
 wire  [4:0] key_data;
 keyboard kbd( .* );
 
-reg   [5:0] joy_kempston;
+reg   [7:0] joy_kempston;
 reg   [4:0] joy_sinclair1;
 reg   [4:0] joy_sinclair2;
 reg   [4:0] joy_cursor;
 
 always @(*) begin
-	joy_kempston = 6'h0;
+	joy_kempston = 8'h0;
 	joy_sinclair1 = 5'h0;
 	joy_sinclair2 = 5'h0;
 	joy_cursor = 5'h0;
 	case (st_joy1)
 		2'b00: joy_sinclair1 |= joystick_0[4:0];
 		2'b01: joy_sinclair2 |= joystick_0[4:0];
-		2'b10: joy_kempston  |= joystick_0[5:0];
+		2'b10: joy_kempston  |= {joystick_0[9:8], joystick_0[5:0]};
 		2'b11: joy_cursor    |= joystick_0[4:0];
 		default: ;
 	endcase
 	case (st_joy2)
 		2'b00: joy_sinclair1 |= joystick_1[4:0];
 		2'b01: joy_sinclair2 |= joystick_1[4:0];
-		2'b10: joy_kempston  |= joystick_1[5:0];
+		2'b10: joy_kempston  |= {joystick_1[9:8], joystick_1[5:0]};
 		2'b11: joy_cursor    |= joystick_1[4:0];
 		default: ;
 	endcase
@@ -1253,7 +1289,7 @@ always @(posedge clk_sys) begin
 	reg old_status = 0;
 	old_status <= ps2_mouse[24];
 
-	if(joy_kempston[5:0]) mouse_sel <= 0;
+	if(joy_kempston[7:0]) mouse_sel <= 0;
 	if(old_status != ps2_mouse[24]) mouse_sel <= 1;
 end
 
@@ -1533,9 +1569,8 @@ wire ear_in;
 `ifdef USE_AUDIO_IN
 assign ear_in = AUDIO_IN;
 `else
-assign ear_in = UART_RX;
+assign ear_in = unouart_act? 1'b1 : UART_RX;
 `endif
-assign UART_TX = 1;
 assign tape_in = ~(tape_loaded_reg ? tape_vin : ear_in);
 assign ula_tape_in = tape_in | ear_out | (st_issue2 & !tape_active & mic_out);
 
@@ -1629,5 +1664,59 @@ snap_loader #(ARCH_ZX48, ARCH_ZX128, ARCH_ZX3, ARCH_P128) snap_loader
 	.reg_1ffd(snap_1ffd),
 	.reg_7ffd(snap_7ffd)
 );
+
+
+////////////////// UNO UART (WiFi)  //////////////////
+wire [7:0] unouart_dout;
+wire unouart_dout_oe;
+wire unouart_tx;
+unouart #( .CLK(112_000_000), .BPS(115200) ) unouart0(
+	.clk(clk_sys),
+	.rst_n(~reset),
+	.nWR(nWR),
+	.nRD(nRD),
+	.nIORQ(nIORQ),
+	.addr(addr),
+	.din(cpu_dout),
+	.dout(unouart_dout),
+	.oe(unouart_dout_oe),
+	.uart_rx(UART_RX),
+	.uart_tx(unouart_tx)
+);
+
+reg VSync_old = 1'b0;
+always @(posedge clk_sys)
+	VSync_old <= VSync;
+reg [4:0] unouart_act = 1'b0;
+always @(posedge clk_sys) begin
+	if (unouart_dout_oe)
+		unouart_act <= 1'd1;
+	else if (unouart_act && VSync && !VSync_old)
+		unouart_act <= unouart_act + 1'd1;
+end
+
+
+//////////////////  UART_TX  //////////////////
+reg uart_tx = 1'b1;
+reg mic_out_old = 1'b0;
+reg midi_out_old = 1'b0;
+reg unouart_tx_old = 1'b0;
+
+always @(posedge clk_sys) begin
+	if (mic_out_old != mic_out) begin
+		mic_out_old <= mic_out;
+		uart_tx <= mic_out;
+	end
+	if (midi_out_old != midi_out) begin
+		midi_out_old <= midi_out;
+		uart_tx <= midi_out;
+	end
+	if (unouart_tx_old != unouart_tx || unouart_act) begin
+		unouart_tx_old <= unouart_tx;
+		uart_tx <= unouart_tx;
+	end
+end
+
+assign UART_TX = uart_tx;
 
 endmodule
