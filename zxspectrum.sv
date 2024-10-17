@@ -1520,7 +1520,7 @@ wire        tape_vin;
 smart_tape tape
 (
 	.*,
-	.reset(reset & ~auto_reset_r),
+	.reset(cold_reset),
 	.ce(ce_tape),
 
 	.turbo(tape_turbo),
