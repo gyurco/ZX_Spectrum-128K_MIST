@@ -106,6 +106,10 @@ module zxspectrum
 `ifdef USE_AUDIO_IN
 	input         AUDIO_IN,
 `endif
+`ifdef USE_MIDI_PINS
+	output        MIDI_OUT,
+	input         MIDI_IN,
+`endif
 	input         UART_RX,
 	output        UART_TX
 );
@@ -1707,10 +1711,12 @@ always @(posedge clk_sys) begin
 		mic_out_old <= mic_out;
 		uart_tx <= mic_out;
 	end
+`ifndef USE_MIDI_PINS
 	if (midi_out_old != midi_out) begin
 		midi_out_old <= midi_out;
 		uart_tx <= midi_out;
 	end
+`endif
 	if (unouart_tx_old != unouart_tx || unouart_act) begin
 		unouart_tx_old <= unouart_tx;
 		uart_tx <= unouart_tx;
@@ -1718,5 +1724,8 @@ always @(posedge clk_sys) begin
 end
 
 assign UART_TX = uart_tx;
+`ifdef USE_MIDI_PINS
+assign MIDI_OUT = midi_out;
+`endif
 
 endmodule
