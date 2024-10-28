@@ -168,7 +168,7 @@ assign SDRAM2_nWE = 1;
 
 `default_nettype none
 
-assign LED = ~(ioctl_download | tape_led | unouart_act);
+assign LED = ~(ioctl_download | tape_led | |unouart_act);
 
 localparam CONF_BDI   = "(BDI)";
 localparam CONF_PLUSD = "(+D) ";
@@ -532,7 +532,7 @@ T80pa cpu
 	.REG(cpu_reg),
 	.DIR(snap_REG),
 	.DIRSet(snap_REGSet),
-	.OUT0(st_out0),
+	.OUT0(st_out0)
 );
 
 always_comb begin
@@ -1573,7 +1573,7 @@ wire ear_in;
 `ifdef USE_AUDIO_IN
 assign ear_in = AUDIO_IN;
 `else
-assign ear_in = unouart_act? 1'b1 : UART_RX;
+assign ear_in = |unouart_act? 1'b1 : UART_RX;
 `endif
 assign tape_in = ~(tape_loaded_reg ? tape_vin : ear_in);
 assign ula_tape_in = tape_in | ear_out | (st_issue2 & !tape_active & mic_out);
@@ -1691,11 +1691,11 @@ unouart #( .CLK(112_000_000), .BPS(115200) ) unouart0(
 reg VSync_old = 1'b0;
 always @(posedge clk_sys)
 	VSync_old <= VSync;
-reg [4:0] unouart_act = 1'b0;
+reg [4:0] unouart_act = 5'd0;
 always @(posedge clk_sys) begin
 	if (unouart_dout_oe)
-		unouart_act <= 1'd1;
-	else if (unouart_act && VSync && !VSync_old)
+		unouart_act <= 5'd1;
+	else if (|unouart_act && VSync && !VSync_old)
 		unouart_act <= unouart_act + 1'd1;
 end
 
@@ -1717,7 +1717,7 @@ always @(posedge clk_sys) begin
 		uart_tx <= midi_out;
 	end
 `endif
-	if (unouart_tx_old != unouart_tx || unouart_act) begin
+	if (unouart_tx_old != unouart_tx || |unouart_act) begin
 		unouart_tx_old <= unouart_tx;
 		uart_tx <= unouart_tx;
 	end
