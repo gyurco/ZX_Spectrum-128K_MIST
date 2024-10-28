@@ -40,21 +40,23 @@ module sdram (
 	input             clkref,
 
 	input             port1_req,
-	output            port1_ack,
+	output reg        port1_ack,
 	input             port1_we,
 	input      [23:1] port1_a,
 	input       [1:0] port1_ds,
 	input      [15:0] port1_d,
-	output     [15:0] port1_q,
+	output reg [15:0] port1_q,
 
 	input             port2_req,
-	output            port2_ack,
+	output reg        port2_ack,
 	input             port2_we,
 	input      [23:1] port2_a,
 	input       [1:0] port2_ds,
 	input      [15:0] port2_d,
-	output     [15:0] port2_q
+	output reg [15:0] port2_q
 );
+
+parameter MHZ = 16'd112;
 
 localparam RASCAS_DELAY   = 3'd3;   // tRCD=20ns -> 2 cycles@<=100MHz, 3 cycles@>100MHz
 localparam BURST_LENGTH   = 3'b000; // 000=1, 001=2, 010=4, 011=8
@@ -65,8 +67,8 @@ localparam NO_WRITE_BURST = 1'b1;   // 0= write burst enabled, 1=only single acc
 
 localparam MODE = { 3'b000, NO_WRITE_BURST, OP_MODE, CAS_LATENCY, ACCESS_TYPE, BURST_LENGTH}; 
 
-// 64ms/8192 rows = 7.8us -> 842 cycles@108MHz
-localparam RFRSH_CYCLES = 10'd842;
+// 64ms/8192 rows = 7.8us
+localparam RFRSH_CYCLES = 16'd78*MHZ/4'd10;
 
 // ---------------------------------------------------------------------
 // ------------------------ cycle state machine ------------------------
@@ -76,24 +78,24 @@ localparam RFRSH_CYCLES = 10'd842;
  SDRAM state machine for 2 bank interleaved access
  1 word burst, CL3
 cmd issued  registered
- 0 RAS0     
- 1          ras0 data1 returned
- 2 RAS1     
- 3 CAS0     ras1
- 4          cas0
- 5 CAS1    
- 6          cas1
- 7          data 0 returned
+ 0 RAS0     cas1
+ 1          ras0
+ 2
+ 3 CAS0     data1 returned
+ 4 RAS1     cas0
+ 5          ras1
+ 6
+ 7 CAS1     data 0 returned
 */
 
 localparam STATE_RAS0      = 3'd0;   // first state in cycle
-localparam STATE_RAS1      = 3'd2;   // Second ACTIVE command after RAS0 + tRRD (15ns)
+localparam STATE_RAS1      = 3'd4;   // Second ACTIVE command after RAS0 + tRRD (15ns)
 localparam STATE_CAS0      = STATE_RAS0 + RASCAS_DELAY; // CAS phase - 3
 localparam STATE_DS0       = STATE_RAS0 + RASCAS_DELAY + 1'd1; // 2 cycles before data required
 localparam STATE_CAS1      = STATE_RAS1 + RASCAS_DELAY; // CAS phase - 5
-localparam STATE_DS1       = STATE_RAS1 + RASCAS_DELAY + 1'd1; // 2 cycles before data required
+localparam STATE_DS1       = 3'd0; //STATE_RAS1 + RASCAS_DELAY + 1'd1; // 2 cycles before data required
 localparam STATE_READ0     = 3'd0; //STATE_CAS0 + CAS_LATENCY + 1'd1;
-localparam STATE_READ1     = 3'd1 + 3'd1;
+localparam STATE_READ1     = 3'd4;
 localparam STATE_LAST      = 3'd7;
 
 reg [2:0] t;
@@ -110,7 +112,7 @@ always @(posedge clk) begin
 	default: t <= 3'd0;
 	endcase
 	//if (t == STATE_RAS1 && !oe_latch[0] && !we_latch[0] && !need_refresh && next_port[1] == PORT_NONE) t <= STATE_RAS0;
-	if (clkref) t <= 3'd6;
+	if (!init & ~|we_latch & ~|oe_latch & ~refresh & clkref) t <= 3'd6;
 end
 
 // ---------------------------------------------------------------------
@@ -168,22 +170,13 @@ localparam PORT_REQ   = 1'd1;
 reg  [1:0] next_port;
 reg  [1:0] port;
 
-reg        port1_ack_reg;
-reg [15:0] port1_q_reg;
-
-reg        port2_ack_reg;
-reg [15:0] port2_q_reg;
-
 reg        refresh;
 reg [10:0] refresh_cnt;
 wire       need_refresh = (refresh_cnt >= RFRSH_CYCLES);
 
 // PORT1: bank 0,1
 always @(*) begin
-	if (refresh) begin
-		next_port[0] = PORT_NONE;
-		addr_latch_next[0] = addr_latch[0];
-	end else if (port1_req ^ state[0]) begin
+	if (port1_req ^ state[0]) begin
 		next_port[0] = PORT_REQ;
 		addr_latch_next[0] = { 1'b0, port1_a };
 	end else begin
@@ -194,7 +187,10 @@ end
 
 // PORT2: bank 2,3
 always @(*) begin
-	if (port2_req ^ state[1]) begin
+	if (refresh) begin
+		next_port[1] = PORT_NONE;
+		addr_latch_next[1] = addr_latch[1];
+	end else if (port2_req ^ state[1]) begin
 		next_port[1] = PORT_REQ;
 		addr_latch_next[1] = { 1'b1, port2_a };
 	end else begin
@@ -235,6 +231,7 @@ always @(posedge clk) begin
 		// RAS phase
 		// bank 0,1
 		if(t == STATE_RAS0) begin
+			refresh <= 0;
 			addr_latch[0] <= addr_latch_next[0];
 			port[0] <= next_port[0];
 			{ oe_latch[0], we_latch[0] } <= 2'b00;
@@ -248,11 +245,15 @@ always @(posedge clk) begin
 				ds[0] <= port1_ds;
 				din_latch[0] <= port1_d;
 			end
+			if (next_port[0] == PORT_NONE && need_refresh && !we_latch[1] && !oe_latch[1]) begin
+				refresh <= 1;
+				refresh_cnt <= refresh_cnt - RFRSH_CYCLES;
+				sd_cmd <= CMD_AUTO_REFRESH;
+			end
 		end
 
 		// bank 2,3
 		if(t == STATE_RAS1) begin
-			refresh <= 0;
 			addr_latch[1] <= addr_latch_next[1];
 			{ oe_latch[1], we_latch[1] } <= 2'b00;
 			port[1] <= next_port[1];
@@ -266,12 +267,6 @@ always @(posedge clk) begin
 				ds[1] <= port2_ds;
 				din_latch[1] <= port2_d;
 			end
-
-			if (next_port[1] == PORT_NONE && need_refresh && !we_latch[0] && !oe_latch[0]) begin
-				refresh <= 1;
-				refresh_cnt <= 0;
-				sd_cmd <= CMD_AUTO_REFRESH;
-			end
 		end
 
 		// CAS phase
@@ -280,7 +275,7 @@ always @(posedge clk) begin
 			{ SDRAM_DQMH, SDRAM_DQML } <= ~ds[0];
 			if (we_latch[0]) begin
 				SDRAM_DQ <= din_latch[0];
-				port1_ack_reg <= port1_req;
+				port1_ack <= port1_req;
 			end
 			SDRAM_A <= { 4'b0010, addr_latch[0][9:1] };  // auto precharge
 			SDRAM_BA <= addr_latch[0][24:23];
@@ -291,7 +286,7 @@ always @(posedge clk) begin
 			{ SDRAM_DQMH, SDRAM_DQML } <= ~ds[1];
 			if (we_latch[1]) begin
 				SDRAM_DQ <= din_latch[1];
-				port2_ack_reg <= port2_req;
+				port2_ack <= port2_req;
 			end
 			SDRAM_A <= { 4'b0010, addr_latch[1][9:1] };  // auto precharge
 			SDRAM_BA <= addr_latch[1][24:23];
@@ -301,23 +296,17 @@ always @(posedge clk) begin
 		if(t == STATE_DS0 && oe_latch[0])	{ SDRAM_DQMH, SDRAM_DQML } <= ~ds[0];
 
 		if(t == STATE_READ0 && oe_latch[0]) begin
-			port1_q_reg <= sd_din;
-			port1_ack_reg <= port1_req;
+			port1_q <= sd_din;
+			port1_ack <= port1_req;
 		end
 
 		if(t == STATE_DS1 && oe_latch[1])	{ SDRAM_DQMH, SDRAM_DQML } <= ~ds[1];
 
 		if(t == STATE_READ1 && oe_latch[1]) begin
-			port2_q_reg <= sd_din;
-			port2_ack_reg <= port2_req;
+			port2_q <= sd_din;
+			port2_ack <= port2_req;
 		end
 	end
 end
-
-assign port1_q   = (t == STATE_READ0 && oe_latch[0]) ? sd_din : port1_q_reg;
-assign port1_ack = (t == STATE_READ0 && oe_latch[0]) ? port1_req : port1_ack_reg;
-
-assign port2_q   = (t == STATE_READ1 && oe_latch[1]) ? sd_din : port2_q_reg;
-assign port2_ack = (t == STATE_READ1 && oe_latch[1]) ? port2_req : port2_ack_reg;
 
 endmodule
