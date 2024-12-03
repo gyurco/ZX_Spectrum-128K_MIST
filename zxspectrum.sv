@@ -201,6 +201,7 @@ localparam CONF_STR = {
 	"OHI,MMC Card,Off,divMMC,ZXMMC,divMMC+ESXDOS;",
 	"OKL,General Sound,512KB,1MB,2MB,Disabled;",
 	"OJ,Currah uSpeech,Off,On;",
+	"OQ,Covox/SounDrive,Off,On;",
 	"O5,Keyboard,Issue 3,Issue 2;",
 	"O7,Snowing,Enabled,Unrained;",
 	"OM,CPU type,NMOS,CMOS;",
@@ -222,6 +223,7 @@ wire       st_unrainer    = status[7];
 wire       st_uspeech     = status[19];
 wire       st_out0        = status[22];
 wire [2:0] st_cpu_freq    = status[25:23];
+wire       st_covox       = status[26];
 
 ////////////////////   CLOCKS   ///////////////////
 wire clk_sys, clk_hdmi;
@@ -998,7 +1000,7 @@ wire soundrive_c_cs = ~ext_mem & ~nIORQ & ~nWR & nM1 && addr[7:0] == 8'h4F;
 wire soundrive_d_cs = ~ext_mem & ~nIORQ & ~nWR & nM1 && addr[7:0] == 8'h5F;
 
 always @(posedge clk_sys) begin
-    if (reset) begin
+    if (reset | ~st_covox) begin
         sd_l0 <= 8'h0;
         sd_l1 <= 8'h0;
         sd_r0 <= 8'h0;
