@@ -197,6 +197,12 @@ localparam CONF_STR = {
 	"F2,TAPCSWTZX,Load Tape;",
 	"F3,Z80SNA,Load Snapshot;",
 	`SEP
+	"P1,Profiles;",
+	"P1I,Standard 48k,0xc00,0x1f80;",  // 48k video, 48k mem, snowing
+	"P1I,Standard 128k,0x100,0x1f80;", // 128k video, 128k mem, snowing
+	"P1I,Spectrum +3,0x1180,0x1f80;",  // 128k video, +3 mem, unrained
+	"P1I,Pentagon 1024k,0x680,0x1f80;",// Pentagon video, Pentagon mem, unrained
+	`SEP
 	"O89,Video timings,ULA-48,ULA-128,Pentagon;",
 	"OAC,Memory,Standard 128K,Pentagon 1024K,Profi 1024K,Standard 48K,+2A/+3;",
 	"O12,Joystick 1,Sinclair I,Sinclair II,Kempston,Cursor;",
