@@ -110,6 +110,12 @@ module zxspectrum
 	output        MIDI_OUT,
 	input         MIDI_IN,
 `endif
+`ifdef SIDI128_EXPANSION
+	input         UART_CTS,
+	output        UART_RTS,
+	inout         EXP7,
+	inout         MOTOR_CTRL,
+`endif
 	input         UART_RX,
 	output        UART_TX
 );
@@ -913,8 +919,19 @@ wire        psg_enable = addr[0] & addr[15] & ~addr[1];
 wire        psg_we     = psg_enable & ~nIORQ & ~nWR & nM1;
 reg         psg_reset;
 
-wire [7:0] ioa_out;
-wire midi_out = ioa_out[2];
+wire [7:0] ioa_out, ioa_in;
+wire       midi_out = ioa_out[2];
+wire       uart_out = ioa_out[3];
+`ifdef SIDI128_EXPANSION
+assign     UART_RTS = ioa_out[2];
+`endif
+assign ioa_in[5:0] = 6'd0;
+`ifdef SIDI128_EXPANSION
+assign ioa_in[6] = UART_CTS;
+`else
+assign ioa_in[6] = 1'b0;
+`endif
+assign ioa_in[7] = UART_RX;
 
 // Turbosound card (Dual AY/YM chips)
 turbosound turbosound
@@ -929,7 +946,7 @@ turbosound turbosound
 	.AUDIO_L(psg_left),
 	.AUDIO_R(psg_right),
 
-	.IOA_in(0),
+	.IOA_in(ioa_in),
 	.IOA_out(ioa_out),
 	.IOB_in(0),
 	.IOB_out()
@@ -1707,8 +1724,13 @@ reg uart_tx = 1'b1;
 reg mic_out_old = 1'b0;
 reg midi_out_old = 1'b0;
 reg unouart_tx_old = 1'b0;
+reg uart_out_old = 1'b0;
 
 always @(posedge clk_sys) begin
+	if (uart_out_old != uart_out) begin
+		uart_out_old <= uart_out;
+		uart_tx <= uart_out;
+	end
 	if (mic_out_old != mic_out) begin
 		mic_out_old <= mic_out;
 		uart_tx <= mic_out;
