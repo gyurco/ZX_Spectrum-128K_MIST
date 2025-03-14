@@ -1,4 +1,4 @@
-# ZX Spectrum 128K for [MIST Board](https://github.com/mist-devel/mist-board/wiki)
+# ZX Spectrum 128K for [MIST](https://github.com/mist-devel/mist-board/wiki) and [SiDi](https://github.com/ManuFerHi/SiDi-FPGA) FPGAs.
 
 Some verilog models from Till Harbaum [Spectrum](https://github.com/mist-devel/mist-board/tree/master/cores/spectrum) core were used in this project.
 
@@ -27,14 +27,12 @@ Some verilog models from Till Harbaum [Spectrum](https://github.com/mist-devel/m
 - Audio in/out to real [tape device](http://www.atari-forum.com/viewtopic.php?p=298401#p298401).
 - MIDI output.
 
-**Core requires MiST firmware update to build 2016/06/26 or newer!**
+**Core requires firmware build 2025/03/14 or newer!**
 
 ### Installation:
 Copy the *.rbf file at the root of the SD card. You can rename the file to core.rbf if you want the MiST to load it automatically at startup.
 Copy [spectrum.rom](https://github.com/mist-devel/mist-binaries/tree/master/cores/spectrum/spectrum.rom) file to the root of SD card.
 **Note:** always update spectrum.rom together with core to make sure you're using compatible ROM version. ROM is not always compatible with all releases (but always compatible with latest release), thus you need to keep the ROM if you want to use older version of core.
-
-For PAL mode (RGBS output) you need to put [mist.ini](https://github.com/sorgelig/ZX_Spectrum-128K_MIST/tree/master/releases/mist.ini) file to the root of SD card. Set the option **scandoubler_disable** for desired video output.
 
 ### Notes about supported formats:
 **TRD** is TR-DOS image used with Beta Disk Interface (BDI). To use TR-DOS you need to choose TRD image in OSD first. In 128K mode use menu to enter TR-DOS.
@@ -131,9 +129,6 @@ Each part is 16k, except uSpeech, which is 4k.
 - Alt+F11 - cold reset
 - Ctrl+F11 - warm reset with auto load
 - F12 - OSD menu
-
-### Download precompiled binaries and system ROMs:
-Go to [mist-binaries](https://github.com/mist-devel/mist-binaries/tree/master/cores/spectrum).
 
 ### Source code
 - https://github.com/sorgelig/ZX_Spectrum-128K_MIST
