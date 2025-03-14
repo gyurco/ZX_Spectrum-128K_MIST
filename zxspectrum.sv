@@ -198,10 +198,11 @@ localparam CONF_STR = {
 	"F3,Z80SNA,Load Snapshot;",
 	`SEP
 	"P1,Profiles;",
-	"P1I,Standard 48k,0xc00,0x1f80;",  // 48k video, 48k mem, snowing
-	"P1I,Standard 128k,0x100,0x1f80;", // 128k video, 128k mem, snowing
-	"P1I,Spectrum +3,0x1180,0x1f80;",  // 128k video, +3 mem, unrained
-	"P1I,Pentagon 1024k,0x680,0x1f80;",// Pentagon video, Pentagon mem, unrained
+	"P1I,48k Issue 2,0xc20,0x1fa0;",  // 48k video, 48k mem, snowing, Issue 2
+	"P1I,48k Issue 3,0xc00,0x1fa0;",  // 48k video, 48k mem, snowing, Issue 3
+	"P1I,Standard 128k,0x100,0x1fa0;", // 128k video, 128k mem, snowing
+	"P1I,Spectrum +3,0x1180,0x1fa0;",  // 128k video, +3 mem, unrained
+	"P1I,Pentagon 1024k,0x680,0x1fa0;",// Pentagon video, Pentagon mem, unrained
 	`SEP
 	"O89,Video timings,ULA-48,ULA-128,Pentagon;",
 	"OAC,Memory,Standard 128K,Pentagon 1024K,Profi 1024K,Standard 48K,+2A/+3;",
@@ -1596,7 +1597,7 @@ end
 
 wire ear_in;
 `ifdef USE_AUDIO_IN
-assign ear_in = AUDIO_IN;
+assign ear_in = ~AUDIO_IN;
 `else
 assign ear_in = |unouart_act? 1'b1 : UART_RX;
 `endif
